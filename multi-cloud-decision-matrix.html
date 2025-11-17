@@ -375,8 +375,20 @@
       gap: 10px;
       position: relative;
       z-index: 1;
+    }
+
+    .results-scroll {
+      flex: 1 1 auto;
       max-height: 640px;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .results-footer .action-small {
+      font-size: 0.72rem;
+      padding: 4px 9px;
     }
 
     .result-tagline {
@@ -468,7 +480,7 @@
         </p>
       </div>
       <div class="cloud-picker">
-        <div class="badge">Version 5.4 · Copright Theodore B.C. Gibson</div>
+        <div class="badge">Version 5.8b · Copright Theodore B.C. Gibson</div>
         <label>
           Cloud:
           <select id="cloudProvider">
@@ -741,7 +753,7 @@
               </label>
               <select id="dataSensitivity">
                 <option value="">Select...</option>
-                <optgroup label="General">
+                <optgroup label="Private Sector">
                   <option value="public">Public / low impact</option>
                   <option value="internal">Internal, non-sensitive</option>
                   <option value="confidential">Confidential business data</option>
@@ -752,9 +764,6 @@
                   <option value="ps-l4">Public Sector L4</option>
                   <option value="ps-l5">Public Sector L5</option>
                   <option value="ps-l6">Public Sector L6</option>
-                </optgroup>
-                <optgroup label="Private Sector">
-                  <option value="private-sector">Private Sector</option>
                 </optgroup>
               </select>
               <div class="hint">
@@ -1087,6 +1096,7 @@
         <div class="section-divider"></div>
 
         <div class="results-card">
+          <div class="results-scroll">
           <div class="result-tagline">
             Complete all 3 steps and click <strong>Generate recommendation</strong> (or <strong>Finish</strong>) to see suggested services,
             migration path, and a full onboarding playbook for the selected cloud.
@@ -1141,14 +1151,23 @@
               </div>
             </div>
           </div>
+          </div>
 
-          <div class="footer-actions" style="padding-top: 10px; border-top: none;">
-            <div class="mini-label">
-              You can tweak answers, change the cloud, and re-generate as many times as you like.
+          <div class="footer-actions results-footer" style="padding-top: 10px; border-top: none;">
+            <div class="btn-row">
+              <button id="fullViewBtn" class="secondary action-small" type="button" disabled>
+                Full view
+              </button>
+              <button id="printBtn" class="secondary action-small" type="button" disabled>
+                Print
+              </button>
+              <button id="exportWordBtn" class="secondary action-small" type="button" disabled>
+                Save as Word
+              </button>
+              <button id="generateBtn" class="primary" type="button">
+                Generate recommendation
+              </button>
             </div>
-            <button id="generateBtn" class="primary" type="button">
-              Generate recommendation
-            </button>
           </div>
         </div>
       </div>
@@ -1443,6 +1462,103 @@ function goBack() {
     }
 
     
+    
+    function buildRecommendationDocumentHtml() {
+      const providerSelect = document.getElementById("cloudProvider");
+      const providerLabel = providerSelect
+        ? providerSelect.options[providerSelect.selectedIndex].text
+        : "";
+      const workloadNameInput = document.getElementById("workloadName");
+      const workloadName = workloadNameInput && workloadNameInput.value
+        ? workloadNameInput.value
+        : "Cloud workload";
+      const summaryPills = document.getElementById("summaryPills");
+      const resultsContent = document.getElementById("resultsContent");
+      const now = new Date();
+      const generatedAt = now.toLocaleString();
+
+      let pillsLine = "";
+      if (summaryPills) {
+        const spans = Array.from(summaryPills.querySelectorAll("span"));
+        pillsLine = spans.map(s => s.textContent).join(" | ");
+      }
+
+      const resultsHtml = resultsContent && resultsContent.style.display !== "none"
+        ? resultsContent.innerHTML
+        : "<p>No recommendation has been generated yet.</p>";
+
+      const docBody = `
+        <h1>Cloud Recommendation for ${workloadName}</h1>
+        <p><strong>Cloud:</strong> ${providerLabel}</p>
+        <p><strong>Generated:</strong> ${generatedAt}</p>
+        ${pillsLine ? `<p><strong>Summary:</strong> ${pillsLine}</p>` : ""}
+        ${resultsHtml}
+      `;
+
+      const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Cloud Recommendation</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.4; margin: 20px; }
+    h1 { font-size: 20pt; margin-bottom: 8px; }
+    h3 { margin-top: 18px; font-size: 12pt; }
+    p { margin: 4px 0; }
+    table { border-collapse: collapse; margin-top: 6px; }
+    table, th, td { border: 1px solid #555; }
+    th, td { padding: 4px 6px; }
+  </style>
+</head>
+<body>
+${docBody}
+</body>
+</html>`;
+      return fullHtml;
+    }
+
+    function openFullViewWindow() {
+      const html = buildRecommendationDocumentHtml();
+      const w = window.open("", "_blank");
+      if (!w) return;
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+    }
+
+    function openPrintView() {
+      const html = buildRecommendationDocumentHtml();
+      const w = window.open("", "_blank");
+      if (!w) return;
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
+    function exportRecommendationAsWord() {
+      const html = buildRecommendationDocumentHtml();
+      const blob = new Blob(['\ufeff', html], { type: "application/msword" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const workloadNameInput = document.getElementById("workloadName");
+      let fileBase = workloadNameInput && workloadNameInput.value
+        ? workloadNameInput.value
+        : "cloud-recommendation";
+      fileBase = fileBase.toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      a.href = url;
+      a.download = (fileBase || "cloud-recommendation") + "-recommendation.doc";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
     function generateRecommendation() {
       const envScope = Array.from(
         document.querySelectorAll('input[name="envScope"]:checked')
@@ -1512,6 +1628,13 @@ function goBack() {
 
       const resultsContent = document.getElementById("resultsContent");
       if (resultsContent) resultsContent.style.display = "block";
+      const fullBtn = document.getElementById("fullViewBtn");
+      const printBtn = document.getElementById("printBtn");
+      const wordBtn = document.getElementById("exportWordBtn");
+      [fullBtn, printBtn, wordBtn].forEach(btn => {
+        if (btn) btn.disabled = false;
+      });
+
 
       const mapping = [
         ["computeMain", rec.computeMain],
@@ -2617,10 +2740,16 @@ document.addEventListener("DOMContentLoaded", function () {
       const backBtn = document.getElementById("backBtn");
       const nextBtn = document.getElementById("nextBtn");
       const generateBtn = document.getElementById("generateBtn");
+      const fullBtn = document.getElementById("fullViewBtn");
+      const printBtn = document.getElementById("printBtn");
+      const wordBtn = document.getElementById("exportWordBtn");
 
       if (backBtn) backBtn.addEventListener("click", goBack);
       if (nextBtn) nextBtn.addEventListener("click", goNext);
       if (generateBtn) generateBtn.addEventListener("click", generateRecommendation);
+      if (fullBtn) fullBtn.addEventListener("click", openFullViewWindow);
+      if (printBtn) printBtn.addEventListener("click", openPrintView);
+      if (wordBtn) wordBtn.addEventListener("click", exportRecommendationAsWord);
     });
   </script>
 </body>
