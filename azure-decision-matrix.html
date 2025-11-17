@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Azure Workload Decision Wizard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-card: #0b1020;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.15);
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --danger: #f97373;
+      --border: #1f2933;
+      --radius: 14px;
+      --shadow: 0 18px 45px rgba(0,0,0,0.65);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: radial-gradient(circle at top, #1f2937 0, #030712 55%);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 1000px;
+      background: linear-gradient(145deg, #020617 0, #020617 60%, #111827 100%);
+      border-radius: 24px;
+      padding: 24px 24px 18px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(55, 65, 81, 0.7);
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header h1 span.logo-dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 20%, #bfdbfe 0, #3b82f6 35%, #1d4ed8 100%);
+      box-shadow: 0 0 18px rgba(59, 130, 246, 0.9);
+    }
+
+    header p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.6);
+      white-space: nowrap;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 860px) {
+      .content {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .card {
+      background: radial-gradient(circle at top left, rgba(59,130,246,0.08), transparent 50%),
+                  radial-gradient(circle at bottom right, rgba(16,185,129,0.08), transparent 55%),
+                  var(--bg-card);
+      border-radius: var(--radius);
+      border: 1px solid rgba(55, 65, 81, 0.7);
+      padding: 18px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom right,
+        rgba(148, 163, 184, 0.08),
+        transparent 40%);
+      mix-blend-mode: soft-light;
+      pointer-events: none;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: 0.02em;
+    }
+
+    .step-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .step-indicator span.step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(59,130,246,0.8);
+    }
+
+    .pill {
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    @media (max-width: 640px) {
+      .form-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    label span.req {
+      color: var(--danger);
+      margin-left: 2px;
+    }
+
+    select,
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 7px 9px;
+      font-size: 0.87rem;
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      width: 100%;
+    }
+
+    select:focus,
+    input:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.7);
+      background: rgba(15, 23, 42, 1);
+    }
+
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+    }
+
+    .hint {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(75, 85, 99, 0.8), transparent);
+      margin: 4px 0 2px;
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding-top: 8px;
+      border-top: 1px dashed rgba(55, 65, 81, 0.7);
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      border-radius: 999px;
+      border: none;
+      font-size: 0.82rem;
+      padding: 7px 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+      transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
+      white-space: nowrap;
+    }
+
+    button.primary {
+      background: linear-gradient(to right, #2563eb, #22c55e);
+      color: #f9fafb;
+      box-shadow: 0 8px 22px rgba(37, 99, 235, 0.5);
+    }
+
+    button.primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 28px rgba(37, 99, 235, 0.7);
+    }
+
+    button.secondary {
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--muted);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+    }
+
+    button.secondary:hover {
+      background: rgba(31, 41, 55, 1);
+      color: #e5e7eb;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .step {
+      display: none;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    .error {
+      font-size: 0.75rem;
+      color: var(--danger);
+      margin-top: 4px;
+    }
+
+    /* Results card */
+
+    .results-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .result-tagline {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .result-section {
+      border-radius: 12px;
+      border: 1px solid rgba(75, 85, 99, 0.9);
+      background: radial-gradient(circle at top left, rgba(59,130,246,0.08), transparent 55%),
+                  rgba(15, 23, 42, 0.95);
+      padding: 10px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .result-section h3 {
+      margin: 0;
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #d1d5db;
+    }
+
+    .result-main {
+      font-size: 0.9rem;
+    }
+
+    .result-main strong {
+      color: #e5e7eb;
+    }
+
+    .result-notes {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .badge-azure {
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 0.7rem;
+      background: rgba(37, 99, 235, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.8);
+      color: #bfdbfe;
+    }
+
+    .mini-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div>
+        <h1>
+          <span class="logo-dot"></span>
+          Azure Workload Decision Wizard
+        </h1>
+        <p>Answer a few questions and get recommended Azure building blocks for this workload.</p>
+      </div>
+      <div class="badge">Cloud: Azure • Version 1.0</div>
+    </header>
+
+    <div class="content">
+      <!-- Left: Multi-step form -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 id="step-title">Step 1 · Workload basics</h2>
+            <div class="step-indicator">
+              <span class="step-dot"></span>
+              <span id="step-subtitle">Name, architecture, traffic</span>
+            </div>
+          </div>
+          <div class="pill">
+            <span id="step-counter">Step 1 of 3</span>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- STEP 1 -->
+        <div id="step-1" class="step active">
+          <div class="form-grid">
+            <div class="field">
+              <label for="workloadName">
+                Workload name <span class="req">*</span>
+              </label>
+              <input id="workloadName" type="text" placeholder="e.g. Online banking API" />
+              <div class="hint">Short name so you recognize this in reports.</div>
+            </div>
+
+            <div class="field">
+              <label for="architectureType">
+                Architecture type <span class="req">*</span>
+              </label>
+              <select id="architectureType">
+                <option value="">Select...</option>
+                <option value="web-api">Web app / HTTP API</option>
+                <option value="microservices">Microservices (containers)</option>
+                <option value="batch">Batch / scheduled processing</option>
+                <option value="event-driven">Event-driven / reactive</option>
+                <option value="legacy-vm">Legacy app / VM-centric</option>
+                <option value="data-analytics">Data / analytics platform</option>
+              </select>
+              <div class="hint">How this thing is built or should be built.</div>
+            </div>
+
+            <div class="field">
+              <label for="trafficPattern">
+                Traffic pattern <span class="req">*</span>
+              </label>
+              <select id="trafficPattern">
+                <option value="">Select...</option>
+                <option value="low">Low, predictable</option>
+                <option value="medium">Medium, predictable</option>
+                <option value="high">High, 24/7</option>
+                <option value="spiky">Spiky / bursty</option>
+              </select>
+              <div class="hint">Rough order-of-magnitude to start.</div>
+            </div>
+
+            <div class="field">
+              <label for="latencySensitivity">
+                Latency sensitivity <span class="req">*</span>
+              </label>
+              <select id="latencySensitivity">
+                <option value="">Select...</option>
+                <option value="strict">Strict (sub-second, customer-facing)</option>
+                <option value="moderate">Moderate (seconds are fine)</option>
+                <option value="relaxed">Relaxed (batch / offline)</option>
+              </select>
+              <div class="hint">How sensitive users are to response time.</div>
+            </div>
+
+            <div class="field">
+              <label for="teamSkills">
+                Team strengths <span class="req">*</span>
+              </label>
+              <select id="teamSkills" multiple size="4">
+                <option value="vms">VMs / servers</option>
+                <option value="containers">Containers / Kubernetes</option>
+                <option value="paas">PaaS (App Service, managed DBs)</option>
+                <option value="serverless">Serverless / Functions</option>
+              </select>
+              <div class="hint">
+                Hold Ctrl (Windows) or ⌘ (Mac) to select multiple.
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="description">
+                Short description
+              </label>
+              <textarea id="description" placeholder="What does this workload do? Who uses it?"></textarea>
+            </div>
+          </div>
+
+          <div id="error-step-1" class="error"></div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div id="step-2" class="step">
+          <div class="form-grid">
+            <div class="field">
+              <label for="dataType">
+                Primary data pattern <span class="req">*</span>
+              </label>
+              <select id="dataType">
+                <option value="">Select...</option>
+                <option value="relational">Relational (OLTP)</option>
+                <option value="nosql">NoSQL / document / key-value</option>
+                <option value="files">Files / blobs</option>
+                <option value="streaming">Streaming / telemetry</option>
+                <option value="analytics-lake">Analytics / data lake / warehouse</option>
+              </select>
+              <div class="hint">What kind of data store is at the core?</div>
+            </div>
+
+            <div class="field">
+              <label for="dataSensitivity">
+                Data sensitivity <span class="req">*</span>
+              </label>
+              <select id="dataSensitivity">
+                <option value="">Select...</option>
+                <option value="public">Public / low impact</option>
+                <option value="internal">Internal, non-sensitive</option>
+                <option value="confidential">Confidential business data</option>
+                <option value="regulated">Regulated (PII/NPI/PCI/etc.)</option>
+              </select>
+              <div class="hint">Helps decide security posture & allowed services.</div>
+            </div>
+
+            <div class="field">
+              <label for="writePattern">
+                Write / update pattern
+              </label>
+              <select id="writePattern">
+                <option value="">Select...</option>
+                <option value="light">Light writes, mostly reads</option>
+                <option value="balanced">Balanced reads & writes</option>
+                <option value="heavy-writes">Heavy write / ingest</option>
+              </select>
+              <div class="hint">Rough characterization of data workload.</div>
+            </div>
+
+            <div class="field">
+              <label for="geoPattern">
+                Geography / users
+              </label>
+              <select id="geoPattern">
+                <option value="">Select...</option>
+                <option value="single-region">Single region / country</option>
+                <option value="multi-region">Multi-region in one continent</option>
+                <option value="global">Global user base</option>
+              </select>
+              <div class="hint">Needed for global distribution decisions.</div>
+            </div>
+
+            <div class="field">
+              <label for="integrations">
+                Integration pattern
+              </label>
+              <select id="integrations">
+                <option value="">Select...</option>
+                <option value="simple-http">Simple HTTP calls to a few services</option>
+                <option value="enterprise-messaging">Enterprise messaging / async flows</option>
+                <option value="event-streaming">Event streaming / telemetry</option>
+                <option value="orchestration">Complex workflows / orchestrations</option>
+              </select>
+              <div class="hint">How this talks to other systems.</div>
+            </div>
+
+            <div class="field">
+              <label for="complianceNotes">
+                Compliance / regulatory notes
+              </label>
+              <textarea id="complianceNotes" placeholder="e.g. GLBA NPI, PCI in scope, region restrictions, etc."></textarea>
+            </div>
+          </div>
+          <div id="error-step-2" class="error"></div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div id="step-3" class="step">
+          <div class="form-grid">
+            <div class="field">
+              <label for="criticality">
+                Business criticality <span class="req">*</span>
+              </label>
+              <select id="criticality">
+                <option value="">Select...</option>
+                <option value="tier0">Tier 0 – Mission critical (customer-facing / revenue)</option>
+                <option value="tier1">Tier 1 – Important internal</option>
+                <option value="tier2">Tier 2/3 – Supporting / batch</option>
+              </select>
+              <div class="hint">Will influence HA/DR & platform choices.</div>
+            </div>
+
+            <div class="field">
+              <label for="uptimeTarget">
+                Uptime target
+              </label>
+              <select id="uptimeTarget">
+                <option value="">Select...</option>
+                <option value="99.0">~99.0% (occasional outages tolerated)</option>
+                <option value="99.5">~99.5%</option>
+                <option value="99.9">~99.9%</option>
+                <option value="99.95">99.95%+</option>
+              </select>
+              <div class="hint">Not a SLA yet, just a design target.</div>
+            </div>
+
+            <div class="field">
+              <label for="rto">
+                RTO (Recovery Time Objective)
+              </label>
+              <select id="rto">
+                <option value="">Select...</option>
+                <option value="mins">Minutes</option>
+                <option value="hour">~1 hour</option>
+                <option value="few-hours">Few hours</option>
+                <option value="day-plus">1 day or more</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="rpo">
+                RPO (Recovery Point Objective)
+              </label>
+              <select id="rpo">
+                <option value="">Select...</option>
+                <option value="zero">Near zero data loss</option>
+                <option value="15min">~15 minutes</option>
+                <option value="hour">~1 hour</option>
+                <option value="day">Up to 1 day</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="timeToMarket">
+                Time-to-market pressure
+              </label>
+              <select id="timeToMarket">
+                <option value="">Select...</option>
+                <option value="urgent">Urgent – weeks</option>
+                <option value="normal">Normal – few months</option>
+                <option value="long">Longer-term – 6+ months</option>
+              </select>
+              <div class="hint">PaaS/serverless often wins when time is tight.</div>
+            </div>
+
+            <div class="field">
+              <label for="opsMaturity">
+                Ops / SRE maturity
+              </label>
+              <select id="opsMaturity">
+                <option value="">Select...</option>
+                <option value="basic">Basic – no real 24/7 ops</option>
+                <option value="intermediate">Intermediate – some on-call / runbooks</option>
+                <option value="advanced">Advanced – SRE / strong automation</option>
+              </select>
+            </div>
+          </div>
+          <div id="error-step-3" class="error"></div>
+        </div>
+
+        <!-- Footer buttons -->
+        <div class="footer-actions">
+          <div class="mini-label" id="mini-hint">
+            Step 1 · Tell me what this workload is.
+          </div>
+          <div class="btn-row">
+            <button id="backBtn" class="secondary" type="button" onclick="goBack()" disabled>
+              ← Back
+            </button>
+            <button id="nextBtn" class="primary" type="button" onclick="goNext()">
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Results panel -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2>Azure recommendation</h2>
+            <div class="step-indicator">
+              <span class="step-dot"></span>
+              <span>Based on your answers so far</span>
+            </div>
+          </div>
+          <div class="badge-azure">Azure-focused</div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="results-card" id="resultsCard">
+          <div class="result-tagline">
+            Complete all 3 steps and click <strong>Generate recommendation</strong> to see suggested Azure services.
+          </div>
+          <div class="pill-row" id="summaryPills"></div>
+
+          <div id="resultsContent" style="display:none;">
+            <div class="result-section">
+              <h3>Compute pattern</h3>
+              <div class="result-main" id="computeMain"></div>
+              <div class="result-notes" id="computeNotes"></div>
+            </div>
+
+            <div class="result-section">
+              <h3>Data & storage</h3>
+              <div class="result-main" id="dataMain"></div>
+              <div class="result-notes" id="dataNotes"></div>
+            </div>
+
+            <div class="result-section">
+              <h3>Integration & messaging</h3>
+              <div class="result-main" id="integrationMain"></div>
+              <div class="result-notes" id="integrationNotes"></div>
+            </div>
+
+            <div class="result-section">
+              <h3>Ops, resilience & next steps</h3>
+              <div class="result-main" id="opsMain"></div>
+              <div class="result-notes" id="opsNotes"></div>
+            </div>
+          </div>
+
+          <div class="footer-actions" style="padding-top: 10px; border-top: none;">
+            <div class="mini-label">
+              You can tweak answers and re-generate as many times as you like.
+            </div>
+            <button class="primary" type="button" onclick="generateRecommendation()">
+              Generate recommendation
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentStep = 1;
+
+    function getMultiSelectValues(select) {
+      return Array.from(select.options)
+        .filter(o => o.selected)
+        .map(o => o.value);
+    }
+
+    function updateStepHeader() {
+      const titleEl = document.getElementById("step-title");
+      const subtitleEl = document.getElementById("step-subtitle");
+      const counterEl = document.getElementById("step-counter");
+      const miniHint = document.getElementById("mini-hint");
+
+      if (currentStep === 1) {
+        titleEl.textContent = "Step 1 · Workload basics";
+        subtitleEl.textContent = "Name, architecture, traffic & team skills";
+        counterEl.textContent = "Step 1 of 3";
+        miniHint.textContent = "Step 1 · Tell me what this workload is.";
+      } else if (currentStep === 2) {
+        titleEl.textContent = "Step 2 · Data & integrations";
+        subtitleEl.textContent = "Data type, sensitivity, integration pattern";
+        counterEl.textContent = "Step 2 of 3";
+        miniHint.textContent = "Step 2 · Describe the data & integrations.";
+      } else if (currentStep === 3) {
+        titleEl.textContent = "Step 3 · Non-functional needs";
+        subtitleEl.textContent = "Criticality, uptime, RTO/RPO, ops maturity";
+        counterEl.textContent = "Step 3 of 3";
+        miniHint.textContent = "Step 3 · How critical and resilient this must be.";
+      }
+    }
+
+    function showStep(step) {
+      currentStep = step;
+      document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+      const stepEl = document.getElementById(`step-${step}`);
+      if (stepEl) stepEl.classList.add("active");
+
+      document.getElementById("backBtn").disabled = step === 1;
+      const nextBtn = document.getElementById("nextBtn");
+      if (step === 3) {
+        nextBtn.textContent = "Finish";
+      } else {
+        nextBtn.textContent = "Next →";
+      }
+      updateStepHeader();
+    }
+
+    function clearErrors() {
+      ["error-step-1", "error-step-2", "error-step-3"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "";
+      });
+    }
+
+    function validateStep(step) {
+      clearErrors();
+      if (step === 1) {
+        const name = document.getElementById("workloadName").value.trim();
+        const arch = document.getElementById("architectureType").value;
+        const traffic = document.getElementById("trafficPattern").value;
+        const latency = document.getElementById("latencySensitivity").value;
+        const skills = getMultiSelectValues(document.getElementById("teamSkills"));
+
+        if (!name || !arch || !traffic || !latency || skills.length === 0) {
+          document.getElementById("error-step-1").textContent =
+            "Please fill in name, architecture, traffic, latency, and at least one team skill.";
+          return false;
+        }
+      }
+      if (step === 2) {
+        const dataType = document.getElementById("dataType").value;
+        const sens = document.getElementById("dataSensitivity").value;
+        if (!dataType || !sens) {
+          document.getElementById("error-step-2").textContent =
+            "Please choose at least primary data pattern and data sensitivity.";
+          return false;
+        }
+      }
+      if (step === 3) {
+        const crit = document.getElementById("criticality").value;
+        if (!crit) {
+          document.getElementById("error-step-3").textContent =
+            "Please choose at least the business criticality tier.";
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function goNext() {
+      if (!validateStep(currentStep)) return;
+      if (currentStep < 3) {
+        showStep(currentStep + 1);
+      } else {
+        // Step 3 finished
+        generateRecommendation();
+      }
+    }
+
+    function goBack() {
+      if (currentStep > 1) {
+        showStep(currentStep - 1);
+      }
+    }
+
+    function generateRecommendation() {
+      // Gather answers
+      const name = document.getElementById("workloadName").value.trim();
+      const architectureType = document.getElementById("architectureType").value;
+      const trafficPattern = document.getElementById("trafficPattern").value;
+      const latencySensitivity = document.getElementById("latencySensitivity").value;
+      const teamSkills = getMultiSelectValues(document.getElementById("teamSkills"));
+      const dataType = document.getElementById("dataType").value;
+      const dataSensitivity = document.getElementById("dataSensitivity").value;
+      const writePattern = document.getElementById("writePattern").value;
+      const geoPattern = document.getElementById("geoPattern").value;
+      const integrations = document.getElementById("integrations").value;
+      const criticality = document.getElementById("criticality").value;
+      const uptimeTarget = document.getElementById("uptimeTarget").value;
+      const rto = document.getElementById("rto").value;
+      const rpo = document.getElementById("rpo").value;
+      const timeToMarket = document.getElementById("timeToMarket").value;
+      const opsMaturity = document.getElementById("opsMaturity").value;
+
+      // Basic guard: require step 1 + 2 + 3 core fields
+      if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
+        showStep(!validateStep(1) ? 1 : !validateStep(2) ? 2 : 3);
+        return;
+      }
+
+      // Compute recommendation logic (simple rules, extend as needed)
+      let computeRec = "";
+      let computeNotes = "";
+
+      const hasSkill = s => teamSkills.includes(s);
+
+      if (architectureType === "web-api") {
+        if ((trafficPattern === "low" || trafficPattern === "medium") && hasSkill("paas")) {
+          computeRec = "Use <strong>Azure App Service</strong> for the web/API layer.";
+          computeNotes =
+            "App Service keeps ops simple, integrates with Entra ID, and supports autoscaling. " +
+            "Good default for line-of-business or customer-facing HTTP workloads.";
+        } else if (trafficPattern === "spiky" && hasSkill("serverless")) {
+          computeRec = "Use <strong>Azure Functions</strong> (HTTP triggers) behind an API surface (e.g. API Management).";
+          computeNotes =
+            "Serverless works well for bursty workloads; you pay for actual execution. Consider Premium plan if cold starts are an issue.";
+        } else if (hasSkill("containers")) {
+          computeRec =
+            "Use <strong>Azure Container Apps</strong> or <strong>Azure Kubernetes Service (AKS)</strong> for containerized web/API services.";
+          computeNotes =
+            "Container Apps if you want minimal cluster management; AKS if you have strong K8s skills and need advanced control.";
+        } else {
+          computeRec = "Use <strong>Azure App Service</strong> backed by a VM or container image.";
+          computeNotes =
+            "Given limited specific PaaS/serverless skills, App Service is still a safe middle ground.";
+        }
+      } else if (architectureType === "microservices") {
+        if (hasSkill("containers") && opsMaturity !== "basic") {
+          computeRec = "Use <strong>Azure Kubernetes Service (AKS)</strong> as the primary compute platform.";
+          computeNotes =
+            "AKS fits microservices and high-scale scenarios when you have container + ops maturity. " +
+            "Use multiple node pools, namespaces, and Azure CNI networking as needed.";
+        } else {
+          computeRec =
+            "Use <strong>Azure Container Apps</strong> for microservices without full AKS complexity.";
+          computeNotes =
+            "Gives you container-based microservices with less cluster management overhead; easier for teams without deep K8s skills.";
+        }
+      } else if (architectureType === "batch") {
+        if (writePattern === "heavy-writes") {
+          computeRec =
+            "Use <strong>Azure Batch</strong> or <strong>Azure Functions (timer triggers)</strong> for scheduled jobs.";
+          computeNotes =
+            "Azure Batch is suited for large-scale compute jobs; Functions are good for lightweight scheduled tasks.";
+        } else {
+          computeRec = "Use <strong>Azure Functions</strong> with timer triggers and/or <strong>Logic Apps</strong>.";
+          computeNotes =
+            "Serverless batch + orchestration keeps costs down and simplifies scheduling.";
+        }
+      } else if (architectureType === "event-driven") {
+        computeRec =
+          "Use <strong>Azure Functions</strong> reacting to <strong>Event Grid</strong> / <strong>Event Hubs</strong>, depending on event volume.";
+        computeNotes =
+          "Event-driven architectures pair well with Functions; use Event Grid for business/resource events, Event Hubs for high-throughput streams.";
+      } else if (architectureType === "legacy-vm") {
+        computeRec =
+          "Start with <strong>Azure Virtual Machines</strong> (possibly in <strong>VM Scale Sets</strong>) as a lift-and-shift, then plan refactoring to PaaS.";
+        computeNotes =
+          "For legacy or tightly coupled systems, VMs provide maximum compatibility. Wrap them with load balancers and ensure backups/monitoring.";
+      } else if (architectureType === "data-analytics") {
+        computeRec =
+          "Use <strong>Azure Synapse Analytics</strong> or <strong>Fabric</strong> for analytics, with compute coming from Spark/SQL pools.";
+        computeNotes =
+          "Optimize storage first (ADLS Gen2) and then pick the analytics compute engine based on existing tooling and skills.";
+      }
+
+      // Data recommendation
+      let dataRec = "";
+      let dataNotes = "";
+      const regulated = dataSensitivity === "regulated";
+
+      if (dataType === "relational") {
+        if (architectureType === "legacy-vm") {
+          dataRec =
+            "Use <strong>Azure SQL Managed Instance</strong> or <strong>SQL Server on Azure VMs</strong> for easier lift-and-shift.";
+          dataNotes =
+            "Managed Instance is preferred for compatibility with many SQL Server features while staying PaaS. VMs only when you truly need OS-level control.";
+        } else {
+          dataRec = "Use <strong>Azure SQL Database</strong> as the primary transactional store.";
+          dataNotes =
+            "Good default for OLTP; enable zone redundancy and geo-replication for higher resilience. " +
+            (regulated
+              ? "Ensure encryption, auditing, private endpoints, and data classification policies are enabled."
+              : "");
+        }
+      } else if (dataType === "nosql") {
+        dataRec = "Use <strong>Azure Cosmos DB</strong> (Core API or appropriate API) for NoSQL data.";
+        dataNotes =
+          "Cosmos DB provides low-latency global distribution and tunable consistency. " +
+          (geoPattern === "global"
+            ? "Multi-region writes and geo-replication are a strong fit for global workloads."
+            : "Single-region with multi-AZ can be sufficient for regional workloads.");
+      } else if (dataType === "files") {
+        dataRec =
+          "Use <strong>Azure Storage (Blob)</strong> or <strong>Azure Data Lake Storage Gen2</strong> for large files and object storage.";
+        dataNotes =
+          "ADLS Gen2 is ideal for analytics data lakes; Blob with tiering (hot/cool/archive) for general file/object storage. " +
+          (regulated ? "Use private endpoints, encryption, and strict access policies for regulated data." : "");
+      } else if (dataType === "streaming") {
+        dataRec = "Use <strong>Azure Event Hubs</strong> with downstream processors (Functions, Stream Analytics).";
+        dataNotes =
+          "Event Hubs is designed for high-throughput ingestion; use dedicated clusters if you expect very large volumes.";
+      } else if (dataType === "analytics-lake") {
+        dataRec =
+          "Use <strong>ADLS Gen2</strong> for storage plus <strong>Synapse Analytics</strong> or <strong>Fabric</strong> for compute.";
+        dataNotes =
+          "Keep the lake as the central source; layer warehouses/marts on top. Apply data classification and governance policies.";
+      }
+
+      // Integration recommendation
+      let integRec = "";
+      let integNotes = "";
+
+      if (integrations === "simple-http" || integrations === "") {
+        integRec = "Use straightforward HTTP calls and consider <strong>Azure API Management</strong> as a front door.";
+        integNotes =
+          "APIM helps with authentication, throttling, logging, and versioning for internal/external consumers.";
+      } else if (integrations === "enterprise-messaging") {
+        integRec = "Use <strong>Azure Service Bus</strong> (queues/topics) for enterprise messaging.";
+        integNotes =
+          "Service Bus fits async patterns, reliable delivery, and decoupling between services and domains.";
+      } else if (integrations === "event-streaming") {
+        integRec = "Use <strong>Azure Event Hubs</strong> + <strong>Event Grid</strong> and Functions/Stream Analytics.";
+        integNotes =
+          "Event Hubs for raw streams, Event Grid for event routing; Functions/Stream Analytics for processing.";
+      } else if (integrations === "orchestration") {
+        integRec = "Use <strong>Azure Logic Apps</strong> and/or <strong>Durable Functions</strong> for orchestrations.";
+        integNotes =
+          "Logic Apps are great for SaaS and enterprise connectors; Durable Functions work well for code-first orchestrations.";
+      }
+
+      // Ops / resilience notes
+      let opsRec = "";
+      let opsNotes = "";
+
+      const tierLabel =
+        criticality === "tier0"
+          ? "Tier 0 – mission critical"
+          : criticality === "tier1"
+          ? "Tier 1 – important internal"
+          : "Tier 2/3 – supporting / batch";
+
+      opsRec =
+        `Treat this as <strong>${tierLabel}</strong> and design HA/DR accordingly. `;
+
+      if (criticality === "tier0") {
+        opsRec +=
+          "Use multi-AZ at minimum; consider multi-region DR with automated failover.";
+      } else if (criticality === "tier1") {
+        opsRec +=
+          "Use availability zones and regular backups/DR tests; multi-region is optional but recommended for customer-impacting internal systems.";
+      } else {
+        opsRec +=
+          "Basic availability plus solid backups are often sufficient; keep designs simple.";
+      }
+
+      opsNotes =
+        "Ensure Azure Monitor + Log Analytics are wired in from day one. " +
+        "Use Azure Policy for baseline compliance and Resource Graph for reporting. " +
+        "Define runbooks and on-call for Sev1/Sev2 incidents based on this tier.";
+
+      // Render summary pills
+      const pillsEl = document.getElementById("summaryPills");
+      pillsEl.innerHTML = "";
+
+      function addPill(text) {
+        const span = document.createElement("span");
+        span.className = "pill";
+        span.textContent = text;
+        pillsEl.appendChild(span);
+      }
+
+      addPill(name || "Unnamed workload");
+      addPill(
+        architectureType === "web-api"
+          ? "Web/API"
+          : architectureType === "microservices"
+          ? "Microservices"
+          : architectureType === "batch"
+          ? "Batch"
+          : architectureType === "event-driven"
+          ? "Event-driven"
+          : architectureType === "legacy-vm"
+          ? "Legacy/VM"
+          : architectureType === "data-analytics"
+          ? "Data/Analytics"
+          : "Architecture: n/a"
+      );
+
+      if (criticality) addPill(tierLabel);
+      if (dataSensitivity) addPill("Data: " + dataSensitivity);
+      if (trafficPattern) addPill("Traffic: " + trafficPattern);
+
+      // Render result sections
+      document.getElementById("computeMain").innerHTML = computeRec || "No clear compute recommendation – adjust inputs.";
+      document.getElementById("computeNotes").textContent = computeNotes;
+
+      document.getElementById("dataMain").innerHTML = dataRec || "No clear data recommendation – adjust inputs.";
+      document.getElementById("dataNotes").textContent = dataNotes;
+
+      document.getElementById("integrationMain").innerHTML = integRec || "No specific integration recommendation – simple HTTP patterns may be enough.";
+      document.getElementById("integrationNotes").textContent = integNotes;
+
+      document.getElementById("opsMain").innerHTML = opsRec;
+      document.getElementById("opsNotes").textContent = opsNotes;
+
+      document.getElementById("resultsContent").style.display = "flex";
+      document.getElementById("resultsContent").style.flexDirection = "column";
+      document.getElementById("resultsContent").style.gap = "8px";
+    }
+
+    // Initialize
+    showStep(1);
+  </script>
+</body>
+</html>

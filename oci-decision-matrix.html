@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>OCI Workload Decision Wizard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-card: #0b1020;
+      --accent: #0ea5e9; /* blue-ish */
+      --accent-soft: rgba(14, 165, 233, 0.15);
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --danger: #f97373;
+      --border: #1f2933;
+      --radius: 14px;
+      --shadow: 0 18px 45px rgba(0,0,0,0.65);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #111827 0, #020617 55%);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .app-shell {
+      width: 100%;
+      max-width: 1000px;
+      background: linear-gradient(145deg, #020617 0, #020617 60%, #111827 100%);
+      border-radius: 24px;
+      padding: 24px 24px 18px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(55, 65, 81, 0.7);
+    }
+    header h1 {
+      font-size: 1.4rem;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header h1 span.logo-dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 20%, #bae6fd 0, #0ea5e9 35%, #0369a1 100%);
+      box-shadow: 0 0 18px rgba(14, 165, 233, 0.9);
+    }
+    header p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.6);
+      white-space: nowrap;
+    }
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr);
+      gap: 16px;
+    }
+    @media (max-width: 860px) {
+      .content { grid-template-columns: minmax(0, 1fr); }
+    }
+    .card {
+      background:
+        radial-gradient(circle at top left, rgba(14,165,233,0.12), transparent 52%),
+        radial-gradient(circle at bottom right, rgba(248,250,252,0.04), transparent 60%),
+        var(--bg-card);
+      border-radius: var(--radius);
+      border: 1px solid rgba(55, 65, 81, 0.7);
+      padding: 18px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom right,
+        rgba(148, 163, 184, 0.08),
+        transparent 40%);
+      mix-blend-mode: soft-light;
+      pointer-events: none;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .card-header h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: 0.02em;
+    }
+    .step-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .step-indicator span.step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(14,165,233,0.8);
+    }
+    .pill {
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px 16px;
+      position: relative;
+      z-index: 1;
+    }
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    label span.req { color: var(--danger); margin-left: 2px; }
+    select,
+    input[type="text"],
+    textarea {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 7px 9px;
+      font-size: 0.87rem;
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      width: 100%;
+    }
+    select:focus,
+    input:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.7);
+      background: rgba(15, 23, 42, 1);
+    }
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+    }
+    .hint { font-size: 0.7rem; color: var(--muted); }
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(75, 85, 99, 0.8), transparent);
+      margin: 4px 0 2px;
+    }
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding-top: 8px;
+      border-top: 1px dashed rgba(55, 65, 81, 0.7);
+      position: relative;
+      z-index: 1;
+    }
+    .btn-row { display: flex; gap: 8px; }
+    button {
+      border-radius: 999px;
+      border: none;
+      font-size: 0.82rem;
+      padding: 7px 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+      transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
+      white-space: nowrap;
+    }
+    button.primary {
+      background: linear-gradient(to right, #0ea5e9, #6366f1);
+      color: #f9fafb;
+      box-shadow: 0 8px 22px rgba(14, 165, 233, 0.5);
+    }
+    button.primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 28px rgba(14, 165, 233, 0.7);
+    }
+    button.secondary {
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--muted);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+    }
+    button.secondary:hover {
+      background: rgba(31, 41, 55, 1);
+      color: #e5e7eb;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      transform: none;
+      box-shadow: none;
+    }
+    .step { display: none; }
+    .step.active { display: block; }
+    .error {
+      font-size: 0.75rem;
+      color: var(--danger);
+      margin-top: 4px;
+    }
+    .results-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .result-tagline {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .result-section {
+      border-radius: 12px;
+      border: 1px solid rgba(75, 85, 99, 0.9);
+      background:
+        radial-gradient(circle at top left, rgba(14,165,233,0.08), transparent 55%),
+        rgba(15, 23, 42, 0.95);
+      padding: 10px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .result-section h3 {
+      margin: 0;
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #d1d5db;
+    }
+    .result-main { font-size: 0.9rem; }
+    .result-main strong { color: #e5e7eb; }
+    .result-notes {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .badge-oci {
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 0.7rem;
+      background: rgba(14,165,233,0.15);
+      border: 1px solid rgba(14,165,233,0.8);
+      color: #bae6fd;
+    }
+    .mini-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div>
+        <h1>
+          <span class="logo-dot"></span>
+          Oracle Cloud (OCI) Workload Decision Wizard
+        </h1>
+        <p>Answer a few questions and get recommended OCI building blocks for this workload.</p>
+      </div>
+      <div class="badge">Cloud: Oracle Cloud • Version 1.0</div>
+    </header>
+
+    <div class="content">
+      <!-- Left: Multi-step form -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 id="step-title">Step 1 · Workload basics</h2>
+            <div class="step-indicator">
+              <span class="step-dot"></span>
+              <span id="step-subtitle">Name, architecture, traffic</span>
+            </div>
+          </div>
+          <div class="pill">
+            <span id="step-counter">Step 1 of 3</span>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- STEP 1 -->
+        <div id="step-1" class="step active">
+          <div class="form-grid">
+            <div class="field">
+              <label for="workloadName">
+                Workload name <span class="req">*</span>
+              </label>
+              <input id="workloadName" type="text" placeholder="e.g. Online banking API" />
+              <div class="hint">Short name so you recognize this in reports.</div>
+            </div>
+
+            <div class="field">
+              <label for="architectureType">
+                Architecture type <span class="req">*</span>
+              </label>
+              <select id="architectureType">
+                <option value="">Select...</option>
+                <option value="web-api">Web app / HTTP API</option>
+                <option value="microservices">Microservices (containers)</option>
+                <option value="batch">Batch / scheduled processing</option>
+                <option value="event-driven">Event-driven / reactive</option>
+                <option value="legacy-vm">Legacy app / VM-centric</option>
+                <option value="data-analytics">Data / analytics platform</option>
+              </select>
+              <div class="hint">How this thing is built or should be built.</div>
+            </div>
+
+            <div class="field">
+              <label for="trafficPattern">
+                Traffic pattern <span class="req">*</span>
+              </label>
+              <select id="trafficPattern">
+                <option value="">Select...</option>
+                <option value="low">Low, predictable</option>
+                <option value="medium">Medium, predictable</option>
+                <option value="high">High, 24/7</option>
+                <option value="spiky">Spiky / bursty</option>
+              </select>
+              <div class="hint">Rough order-of-magnitude to start.</div>
+            </div>
+
+            <div class="field">
+              <label for="latencySensitivity">
+                Latency sensitivity <span class="req">*</span>
+              </label>
+              <select id="latencySensitivity">
+                <option value="">Select...</option>
+                <option value="strict">Strict (sub-second, customer-facing)</option>
+                <option value="moderate">Moderate (seconds are fine)</option>
+                <option value="relaxed">Relaxed (batch / offline)</option>
+              </select>
+              <div class="hint">How sensitive users are to response time.</div>
+            </div>
+
+            <div class="field">
+              <label for="teamSkills">
+                Team strengths <span class="req">*</span>
+              </label>
+              <select id="teamSkills" multiple size="4">
+                <option value="vms">VMs / servers (OCI Compute)</option>
+                <option value="containers">Containers / Kubernetes (OKE)</option>
+                <option value="paas">PaaS / app platforms (Application Container Cloud / OCI Functions)</option>
+                <option value="serverless">Serverless (OCI Functions)</option>
+              </select>
+              <div class="hint">
+                Hold Ctrl (Windows) or ⌘ (Mac) to select multiple.
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="description">
+                Short description
+              </label>
+              <textarea id="description" placeholder="What does this workload do? Who uses it?"></textarea>
+            </div>
+          </div>
+
+          <div id="error-step-1" class="error"></div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div id="step-2" class="step">
+          <div class="form-grid">
+            <div class="field">
+              <label for="dataType">
+                Primary data pattern <span class="req">*</span>
+              </label>
+              <select id="dataType">
+                <option value="">Select...</option>
+                <option value="relational">Relational (OLTP)</option>
+                <option value="nosql">NoSQL / document / key-value</option>
+                <option value="files">Files / objects / blobs</option>
+                <option value="streaming">Streaming / telemetry</option>
+                <option value="analytics-lake">Analytics / data lake / warehouse</option>
+              </select>
+              <div class="hint">What kind of data store is at the core?</div>
+            </div>
+
+            <div class="field">
+              <label for="dataSensitivity">
+                Data sensitivity <span class="req">*</span>
+              </label>
+              <select id="dataSensitivity">
+                <option value="">Select...</option>
+                <option value="public">Public / low impact</option>
+                <option value="internal">Internal, non-sensitive</option>
+                <option value="confidential">Confidential business data</option>
+                <option value="regulated">Regulated (PII/NPI/PCI/etc.)</option>
+              </select>
+              <div class="hint">Helps decide security posture & allowed services.</div>
+            </div>
+
+            <div class="field">
+              <label for="writePattern">
+                Write / update pattern
+              </label>
+              <select id="writePattern">
+                <option value="">Select...</option>
+                <option value="light">Light writes, mostly reads</option>
+                <option value="balanced">Balanced reads & writes</option>
+                <option value="heavy-writes">Heavy write / ingest</option>
+              </select>
+              <div class="hint">Rough characterization of data workload.</div>
+            </div>
+
+            <div class="field">
+              <label for="geoPattern">
+                Geography / users
+              </label>
+              <select id="geoPattern">
+                <option value="">Select...</option>
+                <option value="single-region">Single region / country</option>
+                <option value="multi-region">Multi-region in one continent</option>
+                <option value="global">Global user base</option>
+              </select>
+              <div class="hint">Needed for global distribution decisions.</div>
+            </div>
+
+            <div class="field">
+              <label for="integrations">
+                Integration pattern
+              </label>
+              <select id="integrations">
+                <option value="">Select...</option>
+                <option value="simple-http">Simple HTTP calls to a few services</option>
+                <option value="enterprise-messaging">Enterprise messaging / async flows</option>
+                <option value="event-streaming">Event streaming / telemetry</option>
+                <option value="orchestration">Complex workflows / orchestrations</option>
+              </select>
+              <div class="hint">How this talks to other systems.</div>
+            </div>
+
+            <div class="field">
+              <label for="complianceNotes">
+                Compliance / regulatory notes
+              </label>
+              <textarea id="complianceNotes" placeholder="e.g. GLBA NPI, PCI in scope, region restrictions, etc."></textarea>
+            </div>
+          </div>
+          <div id="error-step-2" class="error"></div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div id="step-3" class="step">
+          <div class="form-grid">
+            <div class="field">
+              <label for="criticality">
+                Business criticality <span class="req">*</span>
+              </label>
+              <select id="criticality">
+                <option value="">Select...</option>
+                <option value="tier0">Tier 0 – Mission critical (customer-facing / revenue)</option>
+                <option value="tier1">Tier 1 – Important internal</option>
+                <option value="tier2">Tier 2/3 – Supporting / batch</option>
+              </select>
+              <div class="hint">Will influence HA/DR & platform choices.</div>
+            </div>
+
+            <div class="field">
+              <label for="uptimeTarget">
+                Uptime target
+              </label>
+              <select id="uptimeTarget">
+                <option value="">Select...</option>
+                <option value="99.0">~99.0% (occasional outages tolerated)</option>
+                <option value="99.5">~99.5%</option>
+                <option value="99.9">~99.9%</option>
+                <option value="99.95">99.95%+</option>
+              </select>
+              <div class="hint">Not a SLA yet, just a design target.</div>
+            </div>
+
+            <div class="field">
+              <label for="rto">
+                RTO (Recovery Time Objective)
+              </label>
+              <select id="rto">
+                <option value="">Select...</option>
+                <option value="mins">Minutes</option>
+                <option value="hour">~1 hour</option>
+                <option value="few-hours">Few hours</option>
+                <option value="day-plus">1 day or more</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="rpo">
+                RPO (Recovery Point Objective)
+              </label>
+              <select id="rpo">
+                <option value="">Select...</option>
+                <option value="zero">Near zero data loss</option>
+                <option value="15min">~15 minutes</option>
+                <option value="hour">~1 hour</option>
+                <option value="day">Up to 1 day</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="timeToMarket">
+                Time-to-market pressure
+              </label>
+              <select id="timeToMarket">
+                <option value="">Select...</option>
+                <option value="urgent">Urgent – weeks</option>
+                <option value="normal">Normal – few months</option>
+                <option value="long">Longer-term – 6+ months</option>
+              </select>
+              <div class="hint">Managed PaaS/serverless often wins when time is tight.</div>
+            </div>
+
+            <div class="field">
+              <label for="opsMaturity">
+                Ops / SRE maturity
+              </label>
+              <select id="opsMaturity">
+                <option value="">Select...</option>
+                <option value="basic">Basic – no real 24/7 ops</option>
+                <option value="intermediate">Intermediate – some on-call / runbooks</option>
+                <option value="advanced">Advanced – SRE / strong automation</option>
+              </select>
+            </div>
+          </div>
+          <div id="error-step-3" class="error"></div>
+        </div>
+
+        <!-- Footer buttons -->
+        <div class="footer-actions">
+          <div class="mini-label" id="mini-hint">
+            Step 1 · Tell me what this workload is.
+          </div>
+          <div class="btn-row">
+            <button id="backBtn" class="secondary" type="button" onclick="goBack()" disabled>
+              ← Back
+            </button>
+            <button id="nextBtn" class="primary" type="button" onclick="goNext()">
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Results panel -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2>OCI recommendation</h2>
+            <div class="step-indicator">
+              <span class="step-dot"></span>
+              <span>Based on your answers so far</span>
+            </div>
+          </div>
+          <div class="badge-oci">OCI-focused</div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="results-card" id="resultsCard">
+          <div class="result-tagline">
+            Complete all 3 steps and click <strong>Generate recommendation</strong> to see suggested OCI services.
+          </div>
+          <div class="pill-row" id="summaryPills"></div>
+
+          <div id="resultsContent" style="display:none;">
+            <div class="result-section">
+              <h3>Compute pattern</h3>
+              <div class="result-main" id="computeMain"></div>
+              <div class="result-notes" id="computeNotes"></div>
+            </div>
+
+            <div class="result-section">
+              <h3>Data & storage</h3>
+              <div class="result-main" id="dataMain"></div>
+              <div class="result-notes" id="dataNotes"></div>
+            </div>
+
+            <div class="result-section">
+              <h3>Integration & messaging</h3>
+              <div class="result-main" id="integrationMain"></div>
+              <div class="result-notes" id="integrationNotes"></div>
+            </div>
+
+            <div class="result-section">
+              <h3>Ops, resilience & next steps</h3>
+              <div class="result-main" id="opsMain"></div>
+              <div class="result-notes" id="opsNotes"></div>
+            </div>
+          </div>
+
+          <div class="footer-actions" style="padding-top: 10px; border-top: none;">
+            <div class="mini-label">
+              You can tweak answers and re-generate as many times as you like.
+            </div>
+            <button class="primary" type="button" onclick="generateRecommendation()">
+              Generate recommendation
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentStep = 1;
+
+    function getMultiSelectValues(select) {
+      return Array.from(select.options)
+        .filter(o => o.selected)
+        .map(o => o.value);
+    }
+
+    function updateStepHeader() {
+      const titleEl = document.getElementById("step-title");
+      const subtitleEl = document.getElementById("step-subtitle");
+      const counterEl = document.getElementById("step-counter");
+      const miniHint = document.getElementById("mini-hint");
+
+      if (currentStep === 1) {
+        titleEl.textContent = "Step 1 · Workload basics";
+        subtitleEl.textContent = "Name, architecture, traffic & team skills";
+        counterEl.textContent = "Step 1 of 3";
+        miniHint.textContent = "Step 1 · Tell me what this workload is.";
+      } else if (currentStep === 2) {
+        titleEl.textContent = "Step 2 · Data & integrations";
+        subtitleEl.textContent = "Data type, sensitivity, integration pattern";
+        counterEl.textContent = "Step 2 of 3";
+        miniHint.textContent = "Step 2 · Describe the data & integrations.";
+      } else if (currentStep === 3) {
+        titleEl.textContent = "Step 3 · Non-functional needs";
+        subtitleEl.textContent = "Criticality, uptime, RTO/RPO, ops maturity";
+        counterEl.textContent = "Step 3 of 3";
+        miniHint.textContent = "Step 3 · How critical and resilient this must be.";
+      }
+    }
+
+    function showStep(step) {
+      currentStep = step;
+      document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+      const stepEl = document.getElementById(\`step-\${step}\`);
+      if (stepEl) stepEl.classList.add("active");
+
+      document.getElementById("backBtn").disabled = step === 1;
+      const nextBtn = document.getElementById("nextBtn");
+      if (step === 3) {
+        nextBtn.textContent = "Finish";
+      } else {
+        nextBtn.textContent = "Next →";
+      }
+      updateStepHeader();
+    }
+
+    function clearErrors() {
+      ["error-step-1", "error-step-2", "error-step-3"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "";
+      });
+    }
+
+    function validateStep(step) {
+      clearErrors();
+      if (step === 1) {
+        const name = document.getElementById("workloadName").value.trim();
+        const arch = document.getElementById("architectureType").value;
+        const traffic = document.getElementById("trafficPattern").value;
+        const latency = document.getElementById("latencySensitivity").value;
+        const skills = getMultiSelectValues(document.getElementById("teamSkills"));
+
+        if (!name || !arch || !traffic || !latency || skills.length === 0) {
+          document.getElementById("error-step-1").textContent =
+            "Please fill in name, architecture, traffic, latency, and at least one team skill.";
+          return false;
+        }
+      }
+      if (step === 2) {
+        const dataType = document.getElementById("dataType").value;
+        const sens = document.getElementById("dataSensitivity").value;
+        if (!dataType || !sens) {
+          document.getElementById("error-step-2").textContent =
+            "Please choose at least primary data pattern and data sensitivity.";
+          return false;
+        }
+      }
+      if (step === 3) {
+        const crit = document.getElementById("criticality").value;
+        if (!crit) {
+          document.getElementById("error-step-3").textContent =
+            "Please choose at least the business criticality tier.";
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function goNext() {
+      if (!validateStep(currentStep)) return;
+      if (currentStep < 3) {
+        showStep(currentStep + 1);
+      } else {
+        generateRecommendation();
+      }
+    }
+
+    function goBack() {
+      if (currentStep > 1) {
+        showStep(currentStep - 1);
+      }
+    }
+
+    function generateRecommendation() {
+      const name = document.getElementById("workloadName").value.trim();
+      const architectureType = document.getElementById("architectureType").value;
+      const trafficPattern = document.getElementById("trafficPattern").value;
+      const latencySensitivity = document.getElementById("latencySensitivity").value;
+      const teamSkills = getMultiSelectValues(document.getElementById("teamSkills"));
+      const dataType = document.getElementById("dataType").value;
+      const dataSensitivity = document.getElementById("dataSensitivity").value;
+      const writePattern = document.getElementById("writePattern").value;
+      const geoPattern = document.getElementById("geoPattern").value;
+      const integrations = document.getElementById("integrations").value;
+      const criticality = document.getElementById("criticality").value;
+      const uptimeTarget = document.getElementById("uptimeTarget").value;
+      const rto = document.getElementById("rto").value;
+      const rpo = document.getElementById("rpo").value;
+      const timeToMarket = document.getElementById("timeToMarket").value;
+      const opsMaturity = document.getElementById("opsMaturity").value;
+
+      if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
+        showStep(!validateStep(1) ? 1 : !validateStep(2) ? 2 : 3);
+        return;
+      }
+
+      const hasSkill = s => teamSkills.includes(s);
+
+      // COMPUTE (OCI)
+      let computeRec = "";
+      let computeNotes = "";
+
+      if (architectureType === "web-api") {
+        if ((trafficPattern === "low" || trafficPattern === "medium") && hasSkill("paas")) {
+          computeRec =
+            "Use <strong>Oracle Application Container Cloud</strong> or <strong>OCI Functions</strong> fronted by <strong>OCI API Gateway</strong>.";
+          computeNotes =
+            "This gives you managed app runtime or serverless functions with integrated routing, auth, and observability.";
+        } else if (trafficPattern === "spiky" && hasSkill("serverless")) {
+          computeRec =
+            "Use <strong>OCI Functions</strong> with <strong>API Gateway</strong> for bursty web/API traffic.";
+          computeNotes =
+            "Serverless lets you scale to zero while still integrating with other OCI services via events and connectors.";
+        } else if (hasSkill("containers")) {
+          computeRec =
+            "Use <strong>Oracle Container Engine for Kubernetes (OKE)</strong> with <strong>OCI Load Balancer</strong>.";
+          computeNotes =
+            "OKE is the managed Kubernetes platform in OCI; combine with OCI Service Mesh if you need advanced service-to-service features.";
+        } else {
+          computeRec =
+            "Use <strong>OCI Compute Instances</strong> (optionally with autoscaling) behind an <strong>OCI Load Balancer</strong>.";
+          computeNotes =
+            "Good for lift-and-shift or when full VM control is required. Use OS Management Service for patching.";
+        }
+      } else if (architectureType === "microservices") {
+        if (hasSkill("containers") && opsMaturity !== "basic") {
+          computeRec = "Use <strong>OKE</strong> as the microservices platform.";
+          computeNotes =
+            "Use multiple node pools, network security groups, and OCI Service Mesh as needed for zero-trust and observability.";
+        } else {
+          computeRec =
+            "Use <strong>OCI Functions</strong> for smaller microservices or consider lighter OKE clusters with opinionated templates.";
+          computeNotes =
+            "Serverless is easier to run than a fully managed cluster when services are relatively simple.";
+        }
+      } else if (architectureType === "batch") {
+        if (writePattern === "heavy-writes") {
+          computeRec = "Use <strong>OCI Batch</strong> or HPC/compute clusters for heavy batch workloads.";
+          computeNotes =
+            "Pair with <strong>OCI Object Storage</strong> for input/output data and consider Spot instances for cost optimization.";
+        } else {
+          computeRec =
+            "Use scheduled <strong>OCI Functions</strong> or <strong>Oracle Integration Cloud</strong> flows for lighter batch tasks.";
+          computeNotes =
+            "Serverless or Integration Cloud is usually enough for routine scheduled processing and orchestrations.";
+        }
+      } else if (architectureType === "event-driven") {
+        computeRec =
+          "Use <strong>OCI Functions</strong> triggered by <strong>OCI Events</strong> and <strong>Service Connectors</strong>.";
+        computeNotes =
+          "Events from Object Storage, Streaming, and other services can trigger Functions to process or route data.";
+      } else if (architectureType === "legacy-vm") {
+        computeRec =
+          "Use <strong>OCI Compute Instances</strong> (and optionally <strong>OCI Dedicated Virtual Hosts</strong>) as a lift-and-shift.";
+        computeNotes =
+          "Keep architecture intact at first. Use Compartments and IAM to enforce boundaries, and plan modernization later.";
+      } else if (architectureType === "data-analytics") {
+        computeRec =
+          "Use <strong>Oracle Autonomous Data Warehouse</strong> plus <strong>OCI Object Storage</strong> and <strong>Oracle Analytics Cloud</strong>.";
+        computeNotes =
+          "Autonomous services reduce admin overhead and integrate well with OCI analytics tools.";
+      }
+
+      // DATA (OCI)
+      let dataRec = "";
+      let dataNotes = "";
+      const regulated = dataSensitivity === "regulated";
+
+      if (dataType === "relational") {
+        dataRec =
+          "Use <strong>Oracle Autonomous Transaction Processing (ATP)</strong> or <strong>OCI MySQL Database Service</strong> depending on engine preference.";
+        dataNotes =
+          "Autonomous DB handles tuning, backups, and patching. " +
+          (regulated ? "Enable encryption, Data Safe, and private endpoints for regulated workloads." : "");
+      } else if (dataType === "nosql") {
+        dataRec = "Use <strong>Oracle NoSQL Database</strong> (cloud service) for key-value/JSON workloads.";
+        dataNotes =
+          "Provides scalable low-latency access. For JSON workloads, consider Autonomous JSON as well.";
+      } else if (dataType === "files") {
+        dataRec =
+          "Use <strong>OCI Object Storage</strong> as the default object/file store; consider <strong>File Storage</strong> for shared POSIX file systems.";
+        dataNotes =
+          "Use buckets with lifecycle rules, replication, and encryption. " +
+          (regulated ? "Use private endpoints, encryption keys in <strong>OCI Vault</strong>, and proper IAM policies." : "");
+      } else if (dataType === "streaming") {
+        dataRec = "Use <strong>OCI Streaming</strong> for Kafka-compatible data streams.";
+        dataNotes =
+          "Streaming integrates with Service Connectors to move data into Object Storage, Functions, or other services.";
+      } else if (dataType === "analytics-lake") {
+        dataRec =
+          "Use <strong>OCI Object Storage</strong> as the data lake, with <strong>Autonomous Data Warehouse</strong> and <strong>Oracle Analytics Cloud</strong> on top.";
+        dataNotes =
+          "Combine with Data Integration / Data Flow for ETL and data prep.";
+      }
+
+      // INTEGRATION (OCI)
+      let integRec = "";
+      let integNotes = "";
+
+      if (integrations === "simple-http" || integrations === "") {
+        integRec = "Expose APIs via <strong>OCI API Gateway</strong>.";
+        integNotes =
+          "API Gateway fronts Functions, OKE services, and backends with auth, throttling, and observability.";
+      } else if (integrations === "enterprise-messaging") {
+        integRec = "Use <strong>OCI Queue</strong> Service and <strong>OCI Streaming</strong> for asynchronous messaging.";
+        integNotes =
+          "Queues for backend work items; Streaming (Kafka-compatible) for pub/sub and event pipelines.";
+      } else if (integrations === "event-streaming") {
+        integRec = "Use <strong>OCI Streaming</strong> with <strong>Service Connectors</strong> and Functions.";
+        integNotes =
+          "Connectors can route from Logging/Object Storage/etc. into Streaming and then Functions or other targets.";
+      } else if (integrations === "orchestration") {
+        integRec =
+          "Use <strong>Oracle Integration Cloud</strong> and <strong>Process Automation</strong> for workflow and SaaS integration.";
+        integNotes =
+          "Integration Cloud provides adapters, transformations, and process orchestration for enterprise scenarios.";
+      }
+
+      // OPS / RESILIENCE (OCI)
+      let opsRec = "";
+      let opsNotes = "";
+
+      const tierLabel =
+        criticality === "tier0"
+          ? "Tier 0 – mission critical"
+          : criticality === "tier1"
+          ? "Tier 1 – important internal"
+          : "Tier 2/3 – supporting / batch";
+
+      opsRec =
+        \`Treat this as <strong>\${tierLabel}</strong> and design HA/DR accordingly on OCI.\`;
+
+      if (criticality === "tier0") {
+        opsRec +=
+          " Use multi-AD or multi-region deployments as appropriate, and configure cross-region replication or DR.";
+      } else if (criticality === "tier1") {
+        opsRec +=
+          " Use high-availability configurations (e.g., multiple ADs) plus regular backup/restore tests.";
+      } else {
+        opsRec +=
+          " Simpler topologies with robust backups will often be sufficient.";
+      }
+
+      opsNotes =
+        "Use <strong>OCI Monitoring</strong> and <strong>Logging</strong> for observability, " +
+        "<strong>OCI Cloud Guard</strong> for security posture, and <strong>Data Safe</strong> for DB security. " +
+        "Configure <strong>Vault</strong> for keys and secrets, and define compartment/IAM policies clearly.";
+
+      // SUMMARY PILLS
+      const pillsEl = document.getElementById("summaryPills");
+      pillsEl.innerHTML = "";
+
+      function addPill(text) {
+        const span = document.createElement("span");
+        span.className = "pill";
+        span.textContent = text;
+        pillsEl.appendChild(span);
+      }
+
+      addPill(name || "Unnamed workload");
+      addPill(
+        architectureType === "web-api"
+          ? "Web/API"
+          : architectureType === "microservices"
+          ? "Microservices"
+          : architectureType === "batch"
+          ? "Batch"
+          : architectureType === "event-driven"
+          ? "Event-driven"
+          : architectureType === "legacy-vm"
+          ? "Legacy/VM"
+          : architectureType === "data-analytics"
+          ? "Data/Analytics"
+          : "Architecture: n/a"
+      );
+      if (criticality) addPill(tierLabel);
+      if (dataSensitivity) addPill("Data: " + dataSensitivity);
+      if (trafficPattern) addPill("Traffic: " + trafficPattern);
+
+      // RENDER RESULTS
+      document.getElementById("computeMain").innerHTML =
+        computeRec || "No clear compute recommendation – adjust inputs.";
+      document.getElementById("computeNotes").textContent = computeNotes;
+
+      document.getElementById("dataMain").innerHTML =
+        dataRec || "No clear data recommendation – adjust inputs.";
+      document.getElementById("dataNotes").textContent = dataNotes;
+
+      document.getElementById("integrationMain").innerHTML =
+        integRec || "No specific integration recommendation – simple HTTP patterns may be enough.";
+      document.getElementById("integrationNotes").textContent = integNotes;
+
+      document.getElementById("opsMain").innerHTML = opsRec;
+      document.getElementById("opsNotes").textContent = opsNotes;
+
+      const rc = document.getElementById("resultsContent");
+      rc.style.display = "flex";
+      rc.style.flexDirection = "column";
+      rc.style.gap = "8px";
+    }
+
+    showStep(1);
+  </script>
+</body>
+</html>

@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AWS Workload Decision Wizard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-card: #0b1020;
+      --accent: #f97316; /* AWS-ish orange */
+      --accent-soft: rgba(249, 115, 22, 0.15);
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --danger: #f97373;
+      --border: #1f2933;
+      --radius: 14px;
+      --shadow: 0 18px 45px rgba(0,0,0,0.65);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #111827 0, #020617 55%);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .app-shell {
+      width: 100%;
+      max-width: 1000px;
+      background: linear-gradient(145deg, #020617 0, #020617 60%, #111827 100%);
+      border-radius: 24px;
+      padding: 24px 24px 18px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(55, 65, 81, 0.7);
+    }
+    header h1 {
+      font-size: 1.4rem;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header h1 span.logo-dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 20%, #fed7aa 0, #f97316 35%, #c2410c 100%);
+      box-shadow: 0 0 18px rgba(249, 115, 22, 0.9);
+    }
+    header p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.6);
+      white-space: nowrap;
+    }
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr);
+      gap: 16px;
+    }
+    @media (max-width: 860px) {
+      .content { grid-template-columns: minmax(0, 1fr); }
+    }
+    .card {
+      background:
+        radial-gradient(circle at top left, rgba(249,115,22,0.12), transparent 52%),
+        radial-gradient(circle at bottom right, rgba(16,185,129,0.08), transparent 60%),
+        var(--bg-card);
+      border-radius: var(--radius);
+      border: 1px solid rgba(55, 65, 81, 0.7);
+      padding: 18px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom right,
+        rgba(148, 163, 184, 0.08),
+        transparent 40%);
+      mix-blend-mode: soft-light;
+      pointer-events: none;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .card-header h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: 0.02em;
+    }
+    .step-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .step-indicator span.step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(249,115,22,0.8);
+    }
+    .pill {
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px 16px;
+      position: relative;
+      z-index: 1;
+    }
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    label span.req { color: var(--danger); margin-left: 2px; }
+    select,
+    input[type="text"],
+    textarea {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 7px 9px;
+      font-size: 0.87rem;
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      width: 100%;
+    }
+    select:focus,
+    input:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.7);
+      background: rgba(15, 23, 42, 1);
+    }
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+    }
+    .hint {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(75, 85, 99, 0.8), transparent);
+      margin: 4px 0 2px;
+    }
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding-top: 8px;
+      border-top: 1px dashed rgba(55, 65, 81, 0.7);
+      position: relative;
+      z-index: 1;
+    }
+    .btn-row { display: flex; gap: 8px; }
+    button {
+      border-radius: 999px;
+      border: none;
+      font-size: 0.82rem;
+      padding: 7px 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+      transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
+      white-space: nowrap;
+    }
+    button.primary {
+      background: linear-gradient(to right, #f97316, #22c55e);
+      color: #f9fafb;
+      box-shadow: 0 8px 22px rgba(249, 115, 22, 0.5);
+    }
+    button.primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 28px rgba(249, 115, 22, 0.7);
+    }
+    button.secondary {
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--muted);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+    }
+    button.secondary:hover {
+      background: rgba(31, 41, 55, 1);
+      color: #e5e7eb;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      transform: none;
+      box-shadow: none;
+    }
+    .step { display: none; }
+    .step.active { display: block; }
+    .error {
+      font-size: 0.75rem;
+      color: var(--danger);
+      margin-top: 4px;
+    }
+    .results-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .result-tagline {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .result-section {
+      border-radius: 12px;
+      border: 1px solid rgba(75, 85, 99, 0.9);
+      background:
+        radial-gradient(circle at top left, rgba(249,115,22,0.08), transparent 55%),
+        rgba(15, 23, 42, 0.95);
+      padding: 10px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .result-section h3 {
+      margin: 0;
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #d1d5db;
+    }
+    .result-main { font-size: 0.9rem; }
+    .result-main strong { color: #e5e7eb; }
+    .result-notes {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .badge-aws {
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 0.7rem;
+      background: rgba(249,115,22,0.15);
+      border: 1px solid rgba(249,115,22,0.8);
+      color: #fed7aa;
+    }
+    .mini-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div>
+        <h1>
+          <span class="logo-dot"></span>
+          AWS Workload Decision Wizard
+        </h1>
+        <p>Answer a few questions and get recommended AWS building blocks for this workload.</p>
+      </div>
+      <div class="badge">Cloud: AWS • Version 1.0</div>
+    </header>
+
+    <div class="content">
+      <!-- Left: Multi-step form -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 id="step-title">Step 1 · Workload basics</h2>
+            <div class="step-indicator">
+              <span class="step-dot"></span>
+              <span id="step-subtitle">Name, architecture, traffic</span>
+            </div>
+          </div>
+          <div class="pill">
+            <span id="step-counter">Step 1 of 3</span>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- STEP 1 -->
+        <div id="step-1" class="step active">
+          <div class="form-grid">
+            <div class="field">
+              <label for="workloadName">
+                Workload name <span class="req">*</span>
+              </label>
+              <input id="workloadName" type="text" placeholder="e.g. Online banking API" />
+              <div class="hint">Short name so you recognize this in reports.</div>
+            </div>
+
+            <div class="field">
+              <label for="architectureType">
+                Architecture type <span class="req">*</span>
+              </label>
+              <select id="architectureType">
+                <option value="">Select...</option>
+                <option value="web-api">Web app / HTTP API</option>
+                <option value="microservices">Microservices (containers)</option>
+                <option value="batch">Batch / scheduled processing</option>
+                <option value="event-driven">Event-driven / reactive</option>
+                <option value="legacy-vm">Legacy app / VM-centric</option>
+                <option value="data-analytics">Data / analytics platform</option>
+              </select>
+              <div class="hint">How this thing is built or should be built.</div>
+            </div>
+
+            <div class="field">
+              <label for="trafficPattern">
+                Traffic pattern <span class="req">*</span>
+              </label>
+              <select id="trafficPattern">
+                <option value="">Select...</option>
+                <option value="low">Low, predictable</option>
+                <option value="medium">Medium, predictable</option>
+                <option value="high">High, 24/7</option>
+                <option value="spiky">Spiky / bursty</option>
+              </select>
+              <div class="hint">Rough order-of-magnitude to start.</div>
+            </div>
+
+            <div class="field">
+              <label for="latencySensitivity">
+                Latency sensitivity <span class="req">*</span>
+              </label>
+              <select id="latencySensitivity">
+                <option value="">Select...</option>
+                <option value="strict">Strict (sub-second, customer-facing)</option>
+                <option value="moderate">Moderate (seconds are fine)</option>
+                <option value="relaxed">Relaxed (batch / offline)</option>
+              </select>
+              <div class="hint">How sensitive users are to response time.</div>
+            </div>
+
+            <div class="field">
+              <label for="teamSkills">
+                Team strengths <span class="req">*</span>
+              </label>
+              <select id="teamSkills" multiple size="4">
+                <option value="vms">VMs / servers</option>
+                <option value="containers">Containers / Kubernetes</option>
+                <option value="paas">PaaS / managed app platforms (Elastic Beanstalk, App Runner)</option>
+                <option value="serverless">Serverless (Lambda)</option>
+              </select>
+              <div class="hint">
+                Hold Ctrl (Windows) or ⌘ (Mac) to select multiple.
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="description">
+                Short description
+              </label>
+              <textarea id="description" placeholder="What does this workload do? Who uses it?"></textarea>
+            </div>
+          </div>
+
+          <div id="error-step-1" class="error"></div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div id="step-2" class="step">
+          <div class="form-grid">
+            <div class="field">
+              <label for="dataType">
+                Primary data pattern <span class="req">*</span>
+              </label>
+              <select id="dataType">
+                <option value="">Select...</option>
+                <option value="relational">Relational (OLTP)</option>
+                <option value="nosql">NoSQL / document / key-value</option>
+                <option value="files">Files / objects / blobs</option>
+                <option value="streaming">Streaming / telemetry</option>
+                <option value="analytics-lake">Analytics / data lake / warehouse</option>
+              </select>
+              <div class="hint">What kind of data store is at the core?</div>
+            </div>
+
+            <div class="field">
+              <label for="dataSensitivity">
+                Data sensitivity <span class="req">*</span>
+              </label>
+              <select id="dataSensitivity">
+                <option value="">Select...</option>
+                <option value="public">Public / low impact</option>
+                <option value="internal">Internal, non-sensitive</option>
+                <option value="confidential">Confidential business data</option>
+                <option value="regulated">Regulated (PII/NPI/PCI/etc.)</option>
+              </select>
+              <div class="hint">Helps decide security posture & allowed services.</div>
+            </div>
+
+            <div class="field">
+              <label for="writePattern">
+                Write / update pattern
+              </label>
+              <select id="writePattern">
+                <option value="">Select...</option>
+                <option value="light">Light writes, mostly reads</option>
+                <option value="balanced">Balanced reads & writes</option>
+                <option value="heavy-writes">Heavy write / ingest</option>
+              </select>
+              <div class="hint">Rough characterization of data workload.</div>
+            </div>
+
+            <div class="field">
+              <label for="geoPattern">
+                Geography / users
+              </label>
+              <select id="geoPattern">
+                <option value="">Select...</option>
+                <option value="single-region">Single region / country</option>
+                <option value="multi-region">Multi-region in one continent</option>
+                <option value="global">Global user base</option>
+              </select>
+              <div class="hint">Needed for global distribution decisions.</div>
+            </div>
+
+            <div class="field">
+              <label for="integrations">
+                Integration pattern
+              </label>
+              <select id="integrations">
+                <option value="">Select...</option>
+                <option value="simple-http">Simple HTTP calls to a few services</option>
+                <option value="enterprise-messaging">Enterprise messaging / async flows</option>
+                <option value="event-streaming">Event streaming / telemetry</option>
+                <option value="orchestration">Complex workflows / orchestrations</option>
+              </select>
+              <div class="hint">How this talks to other systems.</div>
+            </div>
+
+            <div class="field">
+              <label for="complianceNotes">
+                Compliance / regulatory notes
+              </label>
+              <textarea id="complianceNotes" placeholder="e.g. GLBA NPI, PCI in scope, region restrictions, etc."></textarea>
+            </div>
+          </div>
+          <div id="error-step-2" class="error"></div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div id="step-3" class="step">
+          <div class="form-grid">
+            <div class="field">
+              <label for="criticality">
+                Business criticality <span class="req">*</span>
+              </label>
+              <select id="criticality">
+                <option value="">Select...</option>
+                <option value="tier0">Tier 0 – Mission critical (customer-facing / revenue)</option>
+                <option value="tier1">Tier 1 – Important internal</option>
+                <option value="tier2">Tier 2/3 – Supporting / batch</option>
+              </select>
+              <div class="hint">Will influence HA/DR & platform choices.</div>
+            </div>
+
+            <div class="field">
+              <label for="uptimeTarget">
+                Uptime target
+              </label>
+              <select id="uptimeTarget">
+                <option value="">Select...</option>
+                <option value="99.0">~99.0% (occasional outages tolerated)</option>
+                <option value="99.5">~99.5%</option>
+                <option value="99.9">~99.9%</option>
+                <option value="99.95">99.95%+</option>
+              </select>
+              <div class="hint">Not a SLA yet, just a design target.</div>
+            </div>
+
+            <div class="field">
+              <label for="rto">
+                RTO (Recovery Time Objective)
+              </label>
+              <select id="rto">
+                <option value="">Select...</option>
+                <option value="mins">Minutes</option>
+                <option value="hour">~1 hour</option>
+                <option value="few-hours">Few hours</option>
+                <option value="day-plus">1 day or more</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="rpo">
+                RPO (Recovery Point Objective)
+              </label>
+              <select id="rpo">
+                <option value="">Select...</option>
+                <option value="zero">Near zero data loss</option>
+                <option value="15min">~15 minutes</option>
+                <option value="hour">~1 hour</option>
+                <option value="day">Up to 1 day</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="timeToMarket">
+                Time-to-market pressure
+              </label>
+              <select id="timeToMarket">
+                <option value="">Select...</option>
+                <option value="urgent">Urgent – weeks</option>
+                <option value="normal">Normal – few months</option>
+                <option value="long">Longer-term – 6+ months</option>
+              </select>
+              <div class="hint">Managed PaaS/serverless often wins when time is tight.</div>
+            </div>
+
+            <div class="field">
+              <label for="opsMaturity">
+                Ops / SRE maturity
+              </label>
+              <select id="opsMaturity">
+                <option value="">Select...</option>
+                <option value="basic">Basic – no real 24/7 ops</option>
+                <option value="intermediate">Intermediate – some on-call / runbooks</option>
+                <option value="advanced">Advanced – SRE / strong automation</option>
+              </select>
+            </div>
+          </div>
+          <div id="error-step-3" class="error"></div>
+        </div>
+
+        <!-- Footer buttons -->
+        <div class="footer-actions">
+          <div class="mini-label" id="mini-hint">
+            Step 1 · Tell me what this workload is.
+          </div>
+          <div class="btn-row">
+            <button id="backBtn" class="secondary" type="button" onclick="goBack()" disabled>
+              ← Back
+            </button>
+            <button id="nextBtn" class="primary" type="button" onclick="goNext()">
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Results panel -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2>AWS recommendation</h2>
+            <div class="step-indicator">
+              <span class="step-dot"></span>
+              <span>Based on your answers so far</span>
+            </div>
+          </div>
+          <div class="badge-aws">AWS-focused</div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="results-card" id="resultsCard">
+          <div class="result-tagline">
+            Complete all 3 steps and click <strong>Generate recommendation</strong> to see suggested AWS services.
+          </div>
+          <div class="pill-row" id="summaryPills"></div>
+
+          <div id="resultsContent" style="display:none;">
+            <div class="result-section">
+              <h3>Compute pattern</h3>
+              <div class="result-main" id="computeMain"></div>
+              <div class="result-notes" id="computeNotes"></div>
+            </div>
+
+            <div class="result-section">
+              <h3>Data & storage</h3>
+              <div class="result-main" id="dataMain"></div>
+              <div class="result-notes" id="dataNotes"></div>
+            </div>
+
+            <div class="result-section">
+              <h3>Integration & messaging</h3>
+              <div class="result-main" id="integrationMain"></div>
+              <div class="result-notes" id="integrationNotes"></div>
+            </div>
+
+            <div class="result-section">
+              <h3>Ops, resilience & next steps</h3>
+              <div class="result-main" id="opsMain"></div>
+              <div class="result-notes" id="opsNotes"></div>
+            </div>
+          </div>
+
+          <div class="footer-actions" style="padding-top: 10px; border-top: none;">
+            <div class="mini-label">
+              You can tweak answers and re-generate as many times as you like.
+            </div>
+            <button class="primary" type="button" onclick="generateRecommendation()">
+              Generate recommendation
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentStep = 1;
+
+    function getMultiSelectValues(select) {
+      return Array.from(select.options)
+        .filter(o => o.selected)
+        .map(o => o.value);
+    }
+
+    function updateStepHeader() {
+      const titleEl = document.getElementById("step-title");
+      const subtitleEl = document.getElementById("step-subtitle");
+      const counterEl = document.getElementById("step-counter");
+      const miniHint = document.getElementById("mini-hint");
+
+      if (currentStep === 1) {
+        titleEl.textContent = "Step 1 · Workload basics";
+        subtitleEl.textContent = "Name, architecture, traffic & team skills";
+        counterEl.textContent = "Step 1 of 3";
+        miniHint.textContent = "Step 1 · Tell me what this workload is.";
+      } else if (currentStep === 2) {
+        titleEl.textContent = "Step 2 · Data & integrations";
+        subtitleEl.textContent = "Data type, sensitivity, integration pattern";
+        counterEl.textContent = "Step 2 of 3";
+        miniHint.textContent = "Step 2 · Describe the data & integrations.";
+      } else if (currentStep === 3) {
+        titleEl.textContent = "Step 3 · Non-functional needs";
+        subtitleEl.textContent = "Criticality, uptime, RTO/RPO, ops maturity";
+        counterEl.textContent = "Step 3 of 3";
+        miniHint.textContent = "Step 3 · How critical and resilient this must be.";
+      }
+    }
+
+    function showStep(step) {
+      currentStep = step;
+      document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+      const stepEl = document.getElementById(\`step-\${step}\`);
+      if (stepEl) stepEl.classList.add("active");
+
+      document.getElementById("backBtn").disabled = step === 1;
+      const nextBtn = document.getElementById("nextBtn");
+      if (step === 3) {
+        nextBtn.textContent = "Finish";
+      } else {
+        nextBtn.textContent = "Next →";
+      }
+      updateStepHeader();
+    }
+
+    function clearErrors() {
+      ["error-step-1", "error-step-2", "error-step-3"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "";
+      });
+    }
+
+    function validateStep(step) {
+      clearErrors();
+      if (step === 1) {
+        const name = document.getElementById("workloadName").value.trim();
+        const arch = document.getElementById("architectureType").value;
+        const traffic = document.getElementById("trafficPattern").value;
+        const latency = document.getElementById("latencySensitivity").value;
+        const skills = getMultiSelectValues(document.getElementById("teamSkills"));
+
+        if (!name || !arch || !traffic || !latency || skills.length === 0) {
+          document.getElementById("error-step-1").textContent =
+            "Please fill in name, architecture, traffic, latency, and at least one team skill.";
+          return false;
+        }
+      }
+      if (step === 2) {
+        const dataType = document.getElementById("dataType").value;
+        const sens = document.getElementById("dataSensitivity").value;
+        if (!dataType || !sens) {
+          document.getElementById("error-step-2").textContent =
+            "Please choose at least primary data pattern and data sensitivity.";
+          return false;
+        }
+      }
+      if (step === 3) {
+        const crit = document.getElementById("criticality").value;
+        if (!crit) {
+          document.getElementById("error-step-3").textContent =
+            "Please choose at least the business criticality tier.";
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function goNext() {
+      if (!validateStep(currentStep)) return;
+      if (currentStep < 3) {
+        showStep(currentStep + 1);
+      } else {
+        generateRecommendation();
+      }
+    }
+
+    function goBack() {
+      if (currentStep > 1) {
+        showStep(currentStep - 1);
+      }
+    }
+
+    function generateRecommendation() {
+      const name = document.getElementById("workloadName").value.trim();
+      const architectureType = document.getElementById("architectureType").value;
+      const trafficPattern = document.getElementById("trafficPattern").value;
+      const latencySensitivity = document.getElementById("latencySensitivity").value;
+      const teamSkills = getMultiSelectValues(document.getElementById("teamSkills"));
+      const dataType = document.getElementById("dataType").value;
+      const dataSensitivity = document.getElementById("dataSensitivity").value;
+      const writePattern = document.getElementById("writePattern").value;
+      const geoPattern = document.getElementById("geoPattern").value;
+      const integrations = document.getElementById("integrations").value;
+      const criticality = document.getElementById("criticality").value;
+      const uptimeTarget = document.getElementById("uptimeTarget").value;
+      const rto = document.getElementById("rto").value;
+      const rpo = document.getElementById("rpo").value;
+      const timeToMarket = document.getElementById("timeToMarket").value;
+      const opsMaturity = document.getElementById("opsMaturity").value;
+
+      if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
+        showStep(!validateStep(1) ? 1 : !validateStep(2) ? 2 : 3);
+        return;
+      }
+
+      let computeRec = "";
+      let computeNotes = "";
+
+      const hasSkill = s => teamSkills.includes(s);
+
+      // COMPUTE (AWS)
+      if (architectureType === "web-api") {
+        if ((trafficPattern === "low" || trafficPattern === "medium") && hasSkill("paas")) {
+          computeRec = "Use <strong>AWS Elastic Beanstalk</strong> or <strong>AWS App Runner</strong> for the web/API layer.";
+          computeNotes =
+            "These managed application platforms simplify deployments and scaling for common stacks. " +
+            "Put them behind an <strong>Application Load Balancer</strong> and front with <strong>Amazon CloudFront</strong> if Internet-facing.";
+        } else if (trafficPattern === "spiky" && hasSkill("serverless")) {
+          computeRec =
+            "Use <strong>AWS Lambda</strong> with <strong>Amazon API Gateway</strong> (or ALB with Lambda) for an event-driven, pay-per-use API.";
+          computeNotes =
+            "Great for bursty workloads. Use Provisioned Concurrency if cold starts are an issue, and monitor with CloudWatch and X-Ray.";
+        } else if (hasSkill("containers")) {
+          computeRec =
+            "Use <strong>Amazon ECS on AWS Fargate</strong> or <strong>Amazon EKS</strong> for containerized web/API services.";
+          computeNotes =
+            "ECS on Fargate for simpler ops; EKS if you need full Kubernetes flexibility. Place behind an ALB, integrate with AWS App Mesh if you need service mesh.";
+        } else {
+          computeRec =
+            "Use <strong>Amazon EC2 Auto Scaling groups</strong> behind an <strong>Application Load Balancer</strong>.";
+          computeNotes =
+            "Good lift-and-shift starting point. Later you can refactor to ECS, Lambda, or App Runner.";
+        }
+      } else if (architectureType === "microservices") {
+        if (hasSkill("containers") && opsMaturity !== "basic") {
+          computeRec = "Use <strong>Amazon EKS</strong> as the primary compute platform for microservices.";
+          computeNotes =
+            "EKS gives you full Kubernetes; combine with <strong>AWS App Mesh</strong>, ALB ingress, and autoscaling. " +
+            "Requires a team comfortable with K8s and GitOps/CI-CD.";
+        } else {
+          computeRec = "Use <strong>Amazon ECS on Fargate</strong> for microservices without cluster management overhead.";
+          computeNotes =
+            "Fargate removes node management; pair with Service Discovery (Cloud Map) and ALB. Easier to run for small platform teams.";
+        }
+      } else if (architectureType === "batch") {
+        if (writePattern === "heavy-writes") {
+          computeRec = "Use <strong>AWS Batch</strong> for heavy compute jobs; orchestrate with <strong>AWS Step Functions</strong> if needed.";
+          computeNotes =
+            "AWS Batch handles queues, fleets, and retries on top of EC2/Spot. Use CloudWatch Events/EventBridge to trigger.";
+        } else {
+          computeRec = "Use <strong>AWS Lambda</strong> (scheduled via <strong>EventBridge</strong>) or <strong>AWS Step Functions</strong>.";
+          computeNotes =
+            "Serverless batch is ideal for lightweight scheduled tasks; Step Functions can coordinate multi-step workloads.";
+        }
+      } else if (architectureType === "event-driven") {
+        computeRec =
+          "Use <strong>AWS Lambda</strong> triggered by <strong>Amazon EventBridge</strong>, <strong>SQS</strong>, <strong>SNS</strong> or <strong>Kinesis</strong> depending on event source.";
+        computeNotes =
+          "EventBridge for application and SaaS events, SQS/SNS for decoupled messaging, Kinesis for high-throughput streams.";
+      } else if (architectureType === "legacy-vm") {
+        computeRec =
+          "Use <strong>Amazon EC2</strong> (optionally with <strong>EC2 Auto Scaling</strong> and <strong>Elastic Load Balancing</strong>) as a lift-and-shift.";
+        computeNotes =
+          "Keep the architecture mostly intact initially. Use <strong>AWS Systems Manager</strong> for patching and run commands, and plan modernization later.";
+      } else if (architectureType === "data-analytics") {
+        computeRec =
+          "Use <strong>Amazon EMR</strong> or serverless analytics tools (e.g., <strong>Amazon Athena</strong>, <strong>Redshift Serverless</strong>) depending on style.";
+        computeNotes =
+          "Back your analytics with data in <strong>Amazon S3</strong>. Consider <strong>AWS Glue</strong> and <strong>AWS Lake Formation</strong> for cataloging and governance.";
+      }
+
+      // DATA (AWS)
+      let dataRec = "";
+      let dataNotes = "";
+      const regulated = dataSensitivity === "regulated";
+
+      if (dataType === "relational") {
+        if (architectureType === "legacy-vm") {
+          dataRec =
+            "Use <strong>Amazon RDS</strong> (e.g., for SQL Server, Oracle, MySQL, PostgreSQL) or self-managed DB on EC2 if you require full engine control.";
+          dataNotes =
+            "Prefer RDS for managed backups, patching, and Multi-AZ. Only use EC2-hosted databases when feature requirements force it.";
+        } else {
+          dataRec =
+            "Use <strong>Amazon Aurora</strong> (MySQL/PostgreSQL-compatible) or appropriate <strong>Amazon RDS</strong> engine for OLTP.";
+          dataNotes =
+            "Aurora offers high performance and managed replication. Enable Multi-AZ, automated backups, and Performance Insights. " +
+            (regulated ? "For regulated data, enforce encryption (KMS), auditing, and private subnets." : "");
+        }
+      } else if (dataType === "nosql") {
+        dataRec = "Use <strong>Amazon DynamoDB</strong> for high-scale key-value/NoSQL workloads.";
+        dataNotes =
+          "DynamoDB provides low-latency performance and automatic scaling. Consider <strong>DynamoDB Streams</strong> for change data capture.";
+      } else if (dataType === "files") {
+        dataRec =
+          "Use <strong>Amazon S3</strong> for object storage; optionally <strong>Amazon EFS</strong> or <strong>FSx</strong> for file systems.";
+        dataNotes =
+          "S3 is your default data lake/object store. Use lifecycle policies, Glacier tiers, and bucket policies. " +
+          (regulated ? "Lock down with VPC endpoints, KMS encryption, and fine-grained IAM policies." : "");
+      } else if (dataType === "streaming") {
+        dataRec = "Use <strong>Amazon Kinesis Data Streams</strong> or <strong>Amazon Kinesis Data Firehose</strong>.";
+        dataNotes =
+          "Kinesis Data Streams for custom consumers; Firehose for delivering to S3/Redshift/OpenSearch with minimal code.";
+      } else if (dataType === "analytics-lake") {
+        dataRec =
+          "Use <strong>Amazon S3</strong> as the data lake, with <strong>Amazon Redshift</strong> / <strong>Redshift Serverless</strong> and <strong>Amazon Athena</strong> on top.";
+        dataNotes =
+          "Glue Data Catalog + Lake Formation provide metadata and governance. Pair with <strong>Amazon QuickSight</strong> for dashboards.";
+      }
+
+      // INTEGRATION (AWS)
+      let integRec = "";
+      let integNotes = "";
+
+      if (integrations === "simple-http" || integrations === "") {
+        integRec =
+          "Expose APIs via <strong>Amazon API Gateway</strong> or an <strong>Application Load Balancer</strong> for simpler HTTP workloads.";
+        integNotes =
+          "API Gateway adds throttling, auth, usage plans, and monitoring. ALB is good for direct container/EC2 targets.";
+      } else if (integrations === "enterprise-messaging") {
+        integRec = "Use <strong>Amazon SQS</strong> queues and <strong>Amazon SNS</strong> topics as the core messaging fabric.";
+        integNotes =
+          "SQS for work queues and decoupling; SNS for fan-out notifications. For JMS/AMQP compatibility, consider <strong>Amazon MQ</strong>.";
+      } else if (integrations === "event-streaming") {
+        integRec =
+          "Use <strong>Amazon Kinesis</strong> (Data Streams/Firehose) and <strong>Amazon EventBridge</strong> for event routing.";
+        integNotes =
+          "EventBridge is ideal for SaaS and AWS service events; Kinesis handles high-throughput data streams.";
+      } else if (integrations === "orchestration") {
+        integRec = "Use <strong>AWS Step Functions</strong> to orchestrate Lambdas, ECS tasks, and other services.";
+        integNotes =
+          "Step Functions give you visual workflows, retries, error handling, and auditability. Use Express workflows for high-volume, short-lived flows.";
+      }
+
+      // OPS / RESILIENCE (AWS)
+      let opsRec = "";
+      let opsNotes = "";
+
+      const tierLabel =
+        criticality === "tier0"
+          ? "Tier 0 – mission critical"
+          : criticality === "tier1"
+          ? "Tier 1 – important internal"
+          : "Tier 2/3 – supporting / batch";
+
+      opsRec =
+        \`Treat this as <strong>\${tierLabel}</strong> and design HA/DR accordingly on AWS.\`;
+
+      if (criticality === "tier0") {
+        opsRec +=
+          " Use Multi-AZ as a default and consider multi-region DR with Route 53 and health checks.";
+      } else if (criticality === "tier1") {
+        opsRec +=
+          " Multi-AZ plus regular DR drills are expected; multi-region is based on business risk appetite.";
+      } else {
+        opsRec +=
+          " Simple Auto Scaling plus reliable backups and tested restores are usually sufficient.";
+      }
+
+      opsNotes =
+        "Use <strong>Amazon CloudWatch</strong> for metrics and logs, <strong>AWS CloudTrail</strong> for API auditing, " +
+        "<strong>AWS Config</strong> and <strong>Security Hub</strong> for posture, and <strong>AWS Backup</strong> for backup/restore policies.";
+
+      // SUMMARY PILLS
+      const pillsEl = document.getElementById("summaryPills");
+      pillsEl.innerHTML = "";
+
+      function addPill(text) {
+        const span = document.createElement("span");
+        span.className = "pill";
+        span.textContent = text;
+        pillsEl.appendChild(span);
+      }
+
+      addPill(name || "Unnamed workload");
+      addPill(
+        architectureType === "web-api"
+          ? "Web/API"
+          : architectureType === "microservices"
+          ? "Microservices"
+          : architectureType === "batch"
+          ? "Batch"
+          : architectureType === "event-driven"
+          ? "Event-driven"
+          : architectureType === "legacy-vm"
+          ? "Legacy/VM"
+          : architectureType === "data-analytics"
+          ? "Data/Analytics"
+          : "Architecture: n/a"
+      );
+      if (criticality) addPill(tierLabel);
+      if (dataSensitivity) addPill("Data: " + dataSensitivity);
+      if (trafficPattern) addPill("Traffic: " + trafficPattern);
+
+      // RENDER RESULTS
+      document.getElementById("computeMain").innerHTML =
+        computeRec || "No clear compute recommendation – adjust inputs.";
+      document.getElementById("computeNotes").textContent = computeNotes;
+
+      document.getElementById("dataMain").innerHTML =
+        dataRec || "No clear data recommendation – adjust inputs.";
+      document.getElementById("dataNotes").textContent = dataNotes;
+
+      document.getElementById("integrationMain").innerHTML =
+        integRec || "No specific integration recommendation – simple HTTP patterns may be enough.";
+      document.getElementById("integrationNotes").textContent = integNotes;
+
+      document.getElementById("opsMain").innerHTML = opsRec;
+      document.getElementById("opsNotes").textContent = opsNotes;
+
+      const rc = document.getElementById("resultsContent");
+      rc.style.display = "flex";
+      rc.style.flexDirection = "column";
+      rc.style.gap = "8px";
+    }
+
+    showStep(1);
+  </script>
+</body>
+</html>
