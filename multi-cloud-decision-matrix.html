@@ -480,7 +480,7 @@
         </p>
       </div>
       <div class="cloud-picker">
-        <div class="badge">Version 5.8b · Copright Theodore B.C. Gibson</div>
+        <div class="badge">Version 6.0a · Copright Theodore B.C. Gibson</div>
         <label>
           Cloud:
           <select id="cloudProvider">
@@ -661,6 +661,11 @@
                   <option value="compliance">Compliance / security hardening</option>
                   <option value="cost">Cost optimization / rightsizing</option>
                   <option value="modernization">Modernization / tech-refresh</option>
+                  <option value="customer-facing">Customer-facing app / digital product</option>
+                  <option value="internal-lob">Internal line-of-business app</option>
+                  <option value="data-analytics-platform">Data / analytics / reporting platform</option>
+                  <option value="integration-hub">Integration / API / messaging hub</option>
+                  <option value="shared-platform">Shared platform / capability (logging, identity, etc.)</option>
                 </select>
               </div>
               <div class="field">
@@ -950,6 +955,53 @@
                 Pick the primary IaC / automation tool; if you use several, pick the most important one.
               </div>
             </div>
+
+            <div class="field">
+              <label for="securityBaseline">
+                Security baseline / hardening
+              </label>
+              <select id="securityBaseline">
+                <option value="">Select...</option>
+                <option value="standard">Standard enterprise baseline (CIS / internal baseline)</option>
+                <option value="regulated">Strict regulated (PCI / PHI / SOX etc.)</option>
+                <option value="stig">DoD / STIG-aligned baseline</option>
+                <option value="minimal">Minimal baseline / best-effort hardening</option>
+              </select>
+              <div class="hint">
+                Influences how opinionated the security and controls guidance is (CIS, STIG, etc.).
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="perimeterPattern">
+                Perimeter &amp; firewall pattern
+              </label>
+              <select id="perimeterPattern">
+                <option value="">Select...</option>
+                <option value="cloud-fw-only">Cloud-native firewall / WAF only</option>
+                <option value="cloud-plus-f5">Cloud-native + F5 (ADC / WAF)</option>
+                <option value="f5-centric">F5-centric perimeter (BIG-IP / NGINX / XC)</option>
+                <option value="legacy-fw">Legacy on-prem firewall in the path</option>
+              </select>
+              <div class="hint">
+                Helps shape guidance across cloud-native firewalls, WAF, and F5 services.
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="secOpsMaturity">
+                Security operations &amp; monitoring
+              </label>
+              <select id="secOpsMaturity">
+                <option value="">Select...</option>
+                <option value="basic">Basic logging only</option>
+                <option value="central-siem">Central SIEM/SOC, alerts triaged</option>
+                <option value="mature-devsecops">Mature SecOps &amp; DevSecOps (SOAR, shift-left, continuous testing)</option>
+              </select>
+              <div class="hint">
+                Used to tailor recommendations for SIEM/SOC, F5 telemetry, and DevSecOps practices.
+              </div>
+            </div>
           </div>
           <div id="error-step-3" class="error"></div>
         </div>
@@ -1129,6 +1181,12 @@
             </div>
 
             <div class="result-section">
+              <h3>Security &amp; network controls</h3>
+              <div class="result-main" id="securityMain"></div>
+              <div class="result-notes" id="securityNotes"></div>
+            </div>
+
+            <div class="result-section">
               <h3>Migration & onboarding focus</h3>
               <div class="result-main" id="migrationMain"></div>
               <div class="result-notes" id="migrationNotes"></div>
@@ -1280,8 +1338,8 @@
         counterEl.textContent = "Step 2 of 4";
         miniHint.textContent = "Step 2 · Refine the path type and describe data, sector and integrations.";
       } else if (currentStep === 3) {
-        titleEl.textContent = "Step 3 · Non-functional & migration tooling";
-        subtitleEl.textContent = "Criticality, SLOs, source environment, 7R approach and automation tools";
+        titleEl.textContent = "Step 3 · Non-functional, security & migration tooling";
+        subtitleEl.textContent = "Criticality, SLOs, security baseline, source environment, 7R approach and automation tools";
         counterEl.textContent = "Step 3 of 4";
         miniHint.textContent = "Step 3 · How critical it is and how you will move & run it.";
       } else if (currentStep === 4) {
@@ -1427,7 +1485,12 @@ function goBack() {
           "features": "New features",
           "compliance": "Compliance & security",
           "cost": "Cost optimization",
-          "modernization": "Modernization"
+          "modernization": "Modernization",
+          "customer-facing": "Customer-facing app",
+          "internal-lob": "Internal LOB app",
+          "data-analytics-platform": "Data / analytics platform",
+          "integration-hub": "Integration / API hub",
+          "shared-platform": "Shared platform"
         };
         pills.push("Change: " + (ecMap[state.existingChangeType] || state.existingChangeType));
       }
@@ -1595,6 +1658,9 @@ ${docBody}
         rpo: document.getElementById("rpo").value,
         timeToMarket: document.getElementById("timeToMarket").value,
         opsMaturity: document.getElementById("opsMaturity").value,
+        securityBaseline: document.getElementById("securityBaseline").value,
+        perimeterPattern: document.getElementById("perimeterPattern").value,
+        secOpsMaturity: document.getElementById("secOpsMaturity").value,
 
         sourceEnv: document.getElementById("sourceEnv").value,
         migrationApproach: document.getElementById("migrationApproach").value,
@@ -1645,6 +1711,8 @@ ${docBody}
         ["integrationNotes", rec.integNotes],
         ["opsMain", rec.opsMain],
         ["opsNotes", rec.opsNotes],
+        ["securityMain", rec.securityMain],
+        ["securityNotes", rec.securityNotes],
         ["migrationMain", rec.migrationMain],
         ["migrationNotes", rec.migrationNotes],
         ["sizingMain", sizing.main],
@@ -1683,6 +1751,9 @@ function generateCloudRecommendation(cloud, state) {
         rpo,
         timeToMarket,
         opsMaturity,
+        securityBaseline,
+        perimeterPattern,
+        secOpsMaturity,
         sourceEnv,
         migrationApproach,
         iaCTools
@@ -1696,8 +1767,7 @@ function generateCloudRecommendation(cloud, state) {
         dataSensitivity === "ps-l2" ||
         dataSensitivity === "ps-l4" ||
         dataSensitivity === "ps-l5" ||
-        dataSensitivity === "ps-l6" ||
-        dataSensitivity === "private-sector";
+        dataSensitivity === "ps-l6";
 
       const isPublicSector =
         dataSensitivity === "ps-l2" ||
@@ -1705,7 +1775,11 @@ function generateCloudRecommendation(cloud, state) {
         dataSensitivity === "ps-l5" ||
         dataSensitivity === "ps-l6";
 
-      const isPrivateSector = dataSensitivity === "private-sector";
+      const isPrivateSector =
+        dataSensitivity === "public" ||
+        dataSensitivity === "internal" ||
+        dataSensitivity === "confidential" ||
+        dataSensitivity === "regulated";
 
       const tierLabel =
         criticality === "tier0"
@@ -1732,6 +1806,8 @@ function generateCloudRecommendation(cloud, state) {
       let opsNotes = "";
       let migrationMain = providerName + " migration & onboarding focus.";
       let migrationNotes = "Use native migration tooling and IaC-driven landing zones.";
+      let securityMain = "Baseline security and network controls.";
+      let securityNotes = "";
 
       /* ===================== AZURE ===================== */
       if (cloud === "azure") {
@@ -2348,7 +2424,67 @@ function generateCloudRecommendation(cloud, state) {
         }
       }
 
-      return {
+      
+      // Security & network controls
+      const baselineLabel =
+        securityBaseline === "stig"
+          ? "DoD/STIG-aligned"
+          : securityBaseline === "regulated"
+          ? "strict regulated (PCI/PHI/SOX-like)"
+          : securityBaseline === "standard"
+          ? "standard enterprise (CIS / internal baseline)"
+          : securityBaseline === "minimal"
+          ? "minimal baseline"
+          : "";
+
+      const perimeterHint =
+        perimeterPattern === "cloud-plus-f5"
+          ? "Use cloud-native firewalling for north-south and east-west segmentation, and layer <strong>F5 services</strong> at the edge for advanced L7/WAF/WAAP and API protection."
+          : perimeterPattern === "f5-centric"
+          ? "Treat <strong>F5 (BIG-IP / NGINX / Distributed Cloud)</strong> as the primary perimeter and WAAP layer, complemented by cloud-native firewalls and network security groups for segmentation."
+          : perimeterPattern === "legacy-fw"
+          ? "Retain the existing on-prem firewall in the short term, but plan to migrate toward cloud-native firewalls and/or F5 services to remove hairpin/backhaul constraints."
+          : "Emphasize cloud-native firewalls, WAF, and private endpoints as the default perimeter and segmentation controls.";
+
+      securityMain =
+        "Apply " +
+        (baselineLabel || "an appropriate security baseline") +
+        " with opinionated network segmentation and perimeter controls for this workload tier.";
+
+      securityNotes = perimeterHint;
+
+      if (secOpsMaturity === "basic") {
+        securityNotes +=
+          (securityNotes ? " " : "") +
+          "Turn on platform logs, WAF/F5 telemetry, and send them to at least one central log store; define a minimal alert set and owners.";
+      } else if (secOpsMaturity === "central-siem") {
+        securityNotes +=
+          (securityNotes ? " " : "") +
+          "Integrate cloud and F5 telemetry into a central SIEM/SOC with clear runbooks for high-severity alerts.";
+      } else if (secOpsMaturity === "mature-devsecops") {
+        securityNotes +=
+          (securityNotes ? " " : "") +
+          "Embed security into CI/CD with SAST/DAST, policy-as-code, and automated deployment of firewall/WAF/F5 policies (AS3/DO/XC APIs).";
+      }
+
+      if (regulated) {
+        securityNotes +=
+          (securityNotes ? " " : "") +
+          "Enforce private endpoints or service endpoints, customer-managed keys, and strict change control for security configuration.";
+      }
+
+      if (isPublicSector) {
+        securityNotes +=
+          (securityNotes ? " " : "") +
+          "For public sector impact levels (L2/L4/L5/L6), align with the relevant control framework and prefer government/sovereign regions where required.";
+      }
+
+      if (criticality === "tier0") {
+        securityNotes +=
+          (securityNotes ? " " : "") +
+          "For Tier 0 workloads, design for zero-trust access, strong MFA, and defense-in-depth at each layer including identity, network, and application.";
+      }
+return {
         computeMain,
         computeNotes,
         dataMain,
@@ -2358,7 +2494,9 @@ function generateCloudRecommendation(cloud, state) {
         opsMain,
         opsNotes,
         migrationMain,
-        migrationNotes
+        migrationNotes,
+        securityMain,
+        securityNotes
       };
     }
 
@@ -2385,11 +2523,19 @@ function generateCloudRecommendation(cloud, state) {
         dataSensitivity === "ps-l5" ||
         dataSensitivity === "ps-l6";
 
+      const isPrivateSectorLabel =
+        dataSensitivity === "public" ||
+        dataSensitivity === "internal" ||
+        dataSensitivity === "confidential" ||
+        dataSensitivity === "regulated";
+
       const sectorLabel =
         isPublicSector
           ? "public sector / IL workload"
-          : (dataSensitivity === "private-sector" || dataSensitivity === "regulated")
-          ? "regulated private sector (financial) workload"
+          : dataSensitivity === "regulated"
+          ? "regulated private sector (financial/PHI) workload"
+          : isPrivateSectorLabel
+          ? "commercial private sector workload"
           : "general commercial workload";
 
       const cloudLabel =
@@ -2625,8 +2771,7 @@ function generateCloudRecommendation(cloud, state) {
         dataSensitivity === "regulated" ||
         dataSensitivity === "ps-l4" ||
         dataSensitivity === "ps-l5" ||
-        dataSensitivity === "ps-l6" ||
-        dataSensitivity === "private-sector"
+        dataSensitivity === "ps-l6"
       ) {
         storageTier += " Ensure encryption-at-rest, KMS/HSM key management and retention policies aligned to regulatory requirements.";
       }
