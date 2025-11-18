@@ -483,37 +483,6 @@
     .multi-checkbox-group .checkbox-inline input[type="checkbox"] {
       margin: 0;
     }
-
-    
-    .results-footer .scenario-row {
-      margin-top: 6px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      align-items: center;
-      font-size: 0.72rem;
-      color: var(--muted);
-      width: 100%;
-    }
-    .results-footer .scenario-row select {
-      flex: 1 1 200px;
-      min-width: 160px;
-      max-width: 260px;
-      font-size: 0.72rem;
-      padding: 2px 8px;
-      background-color: rgba(15, 23, 42, 0.9);
-      border-radius: 999px;
-      border: 1px solid rgba(75, 85, 99, 0.9);
-      color: #e5e7eb;
-    }
-    .results-footer .scenario-row .scenario-label {
-      opacity: 0.85;
-      white-space: nowrap;
-    }
-
-    .results-footer .scenario-row .scenario-label {
-      opacity: 0.85;
-    }
 </style>
 </head>
 <body>
@@ -529,7 +498,7 @@
         </p>
       </div>
       <div class="cloud-picker">
-        <div class="badge">Version 6.4b · Copright Theodore B.C. Gibson</div>
+        <div class="badge">Version 6.2a · Copright Theodore B.C. Gibson</div>
         <label>
           Cloud:
           <select id="cloudProvider">
@@ -1279,7 +1248,7 @@
         <div class="results-card">
           <div class="results-scroll">
           <div class="result-tagline">
-            Complete all 4 steps and click <strong>Generate recommendation</strong> (or <strong>Finish</strong>) to see suggested services,
+            Complete all 3 steps and click <strong>Generate recommendation</strong> (or <strong>Finish</strong>) to see suggested services,
             migration path, and a full onboarding playbook for the selected cloud.
           </div>
           <div class="pill-row" id="summaryPills"></div>
@@ -1313,11 +1282,6 @@
               <h3>Security &amp; network controls</h3>
               <div class="result-main" id="securityMain"></div>
               <div class="result-notes" id="securityNotes"></div>
-            </div>
-
-            <div class="result-section">
-              <h3>Controls &amp; cyber checklist</h3>
-              <div class="result-main" id="controlsMain"></div>
             </div>
 
             <div class="result-section">
@@ -1365,21 +1329,6 @@
                 Generate recommendation
               </button>
             </div>
-            <div class="scenario-row">
-              <span class="scenario-label">Scenarios:</span>
-              <select id="scenarioSelect">
-                <option value="">Current (unsaved)</option>
-              </select>
-              <button id="scenarioSaveBtn" class="secondary action-small" type="button">
-                Save
-              </button>
-              <button id="scenarioLoadBtn" class="secondary action-small" type="button">
-                Load
-              </button>
-              <button id="scenarioDeleteBtn" class="secondary action-small" type="button">
-                Delete
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -1403,259 +1352,7 @@
       return Array.from(nodes).map(n => n.value);
     }
 
-    
-        function hasLocalStorage() {
-      try {
-        const test = window.localStorage;
-        return !!test;
-      } catch (e) {
-        return false;
-      }
-    }
-
-const SCENARIO_STORAGE_KEY = "cdk_scenarios_v1";
-
-    function loadScenariosFromStorage() {
-      if (!hasLocalStorage()) return [];
-      try {
-        const raw = window.localStorage.getItem(SCENARIO_STORAGE_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (e) {
-        return [];
-      }
-    }
-
-    function saveScenariosToStorage(list) {
-      if (!hasLocalStorage()) return;
-      try {
-        window.localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(list));
-      } catch (e) {
-        // ignore quota or privacy errors
-      }
-    }
-
-    function captureFormSnapshot() {
-      const snapshot = [];
-      const fields = document.querySelectorAll("input, select, textarea");
-      fields.forEach(el => {
-        const id = el.id || "";
-        const name = el.name || "";
-        const tag = (el.tagName || "").toLowerCase();
-        const type = (el.type || "").toLowerCase();
-
-        if (tag === "input" && (type === "button" || type === "submit" || type === "reset")) {
-          return;
-        }
-
-        if (!id && !name) return;
-
-        if (tag === "input" && (type === "checkbox" || type === "radio")) {
-          snapshot.push({
-            id,
-            name,
-            tag,
-            type,
-            value: el.value,
-            checked: !!el.checked
-          });
-        } else if (tag === "select") {
-          const values = [];
-          for (let i = 0; i < el.options.length; i++) {
-            const opt = el.options[i];
-            if (opt.selected) values.push(opt.value);
-          }
-          snapshot.push({
-            id,
-            name,
-            tag,
-            type: "select",
-            values
-          });
-        } else {
-          snapshot.push({
-            id,
-            name,
-            tag,
-            type,
-            value: el.value
-          });
-        }
-      });
-      return snapshot;
-    }
-
-    function applyFormSnapshot(snapshot) {
-      if (!Array.isArray(snapshot)) return;
-
-      snapshot.forEach(item => {
-        const tag = (item.tag || "").toLowerCase();
-        const type = (item.type || "").toLowerCase();
-
-        if (tag === "input" && (type === "checkbox" || type === "radio")) {
-          if (item.name) {
-            const nodes = document.querySelectorAll('input[name="' + item.name + '"]');
-            nodes.forEach(node => {
-              if (node.value === item.value) {
-                node.checked = !!item.checked;
-              }
-            });
-            return;
-          }
-        }
-
-        let el = null;
-        if (item.id) {
-          el = document.getElementById(item.id);
-        }
-        if (!el && item.name) {
-          el = document.querySelector('[name="' + item.name + '"]');
-        }
-        if (!el) return;
-
-        if (tag === "input" && (type === "checkbox" || type === "radio")) {
-          el.checked = !!item.checked;
-        } else if (tag === "select") {
-          const values = item.values || [];
-          if (el.multiple) {
-            const set = new Set(values);
-            Array.from(el.options).forEach(opt => {
-              opt.selected = set.has(opt.value);
-            });
-          } else {
-            el.value = values[0] || "";
-          }
-        } else {
-          el.value = item.value != null ? item.value : "";
-        }
-      });
-
-      // Refresh dependent UI after applying snapshot
-      const initiativeSelect = document.getElementById("initiativeType");
-      if (initiativeSelect) {
-        updatePathGroups();
-      }
-      const cloudSelect = document.getElementById("cloudProvider");
-      if (cloudSelect) {
-        onCloudChange();
-      }
-    }
-
-    function refreshScenarioDropdown() {
-      const select = document.getElementById("scenarioSelect");
-      if (!select) return;
-
-      const scenarios = loadScenariosFromStorage();
-      const previous = select.value;
-
-      select.innerHTML = "";
-      const defaultOpt = document.createElement("option");
-      defaultOpt.value = "";
-      defaultOpt.textContent = "Current (unsaved)";
-      select.appendChild(defaultOpt);
-
-      scenarios
-        .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))
-        .forEach(s => {
-          const opt = document.createElement("option");
-          opt.value = s.id;
-          const cloudLabel = (s.cloud || "").toUpperCase();
-          const nameLabel = s.name || "Unnamed";
-          opt.textContent = cloudLabel ? cloudLabel + " · " + nameLabel : nameLabel;
-          select.appendChild(opt);
-        });
-
-      if (previous) {
-        const found = Array.from(select.options).some(o => o.value === previous);
-        if (found) {
-          select.value = previous;
-        }
-      }
-    }
-
-    function onScenarioSaveClicked() {
-      const snapshot = captureFormSnapshot();
-      const workloadNameEl = document.getElementById("workloadName");
-      const workloadName = workloadNameEl ? (workloadNameEl.value || "").trim() : "";
-      const cloudSelect = document.getElementById("cloudProvider");
-      const cloud = cloudSelect ? cloudSelect.value : "";
-
-      const defaultName = workloadName || "";
-      const name = window.prompt(
-        "Name this scenario (for example 'Finance portal – Azure'):",
-        defaultName
-      );
-      if (!name) return;
-
-      const scenarios = loadScenariosFromStorage();
-      const now = Date.now();
-      let existing = scenarios.find(s => s.name === name && s.cloud === cloud);
-
-      if (existing) {
-        existing.snapshot = snapshot;
-        existing.updatedAt = now;
-      } else {
-        existing = {
-          id: String(now) + "-" + Math.random().toString(16).slice(2),
-          name: name,
-          cloud: cloud,
-          createdAt: now,
-          updatedAt: now,
-          snapshot: snapshot
-        };
-        scenarios.push(existing);
-      }
-
-      saveScenariosToStorage(scenarios);
-      refreshScenarioDropdown();
-
-      const select = document.getElementById("scenarioSelect");
-      if (select) {
-        select.value = existing.id;
-      }
-    }
-
-    function onScenarioLoadClicked() {
-      const select = document.getElementById("scenarioSelect");
-      if (!select || !select.value) {
-        window.alert("Pick a saved scenario to load.");
-        return;
-      }
-      const scenarios = loadScenariosFromStorage();
-      const scenario = scenarios.find(s => s.id === select.value);
-      if (!scenario) {
-        window.alert("That scenario could not be found. Refreshing list.");
-        refreshScenarioDropdown();
-        return;
-      }
-      applyFormSnapshot(scenario.snapshot);
-      // After loading, auto-generate a fresh recommendation
-      generateRecommendation();
-    }
-
-    function onScenarioDeleteClicked() {
-      const select = document.getElementById("scenarioSelect");
-      if (!select || !select.value) {
-        window.alert("Pick a saved scenario to delete.");
-        return;
-      }
-      const scenarios = loadScenariosFromStorage();
-      const idx = scenarios.findIndex(s => s.id === select.value);
-      if (idx === -1) {
-        refreshScenarioDropdown();
-        return;
-      }
-      const scenario = scenarios[idx];
-      const ok = window.confirm("Delete scenario '" + (scenario.name || "Unnamed") + "'?");
-      if (!ok) return;
-
-      scenarios.splice(idx, 1);
-      saveScenariosToStorage(scenarios);
-      refreshScenarioDropdown();
-    }
-
-function onCloudChange() {
+    function onCloudChange() {
       const select = document.getElementById("cloudProvider");
       if (!select) return;
 
@@ -2171,119 +1868,6 @@ ${docBody}
 
       const items = bullets.map(b => "<li>" + b + "</li>").join("");
       return "<ul>" + items + "</ul>";
-
-    function buildCyberChecklist(state, cloud) {
-      const {
-        criticality,
-        dataSensitivity,
-        securityBaseline,
-        secOpsMaturity,
-        geoPattern,
-        regionCount,
-        rto,
-        rpo,
-        dataProtection,
-        perimeterPattern,
-        f5Usage
-      } = state;
-
-      const items = [];
-
-      const regulated =
-        dataSensitivity === "regulated" ||
-        dataSensitivity === "ps-l2" ||
-        dataSensitivity === "ps-l4" ||
-        dataSensitivity === "ps-l5" ||
-        dataSensitivity === "ps-l6";
-
-      const isPublicSector =
-        dataSensitivity === "ps-l2" ||
-        dataSensitivity === "ps-l4" ||
-        dataSensitivity === "ps-l5" ||
-        dataSensitivity === "ps-l6";
-
-      const multiRegion =
-        geoPattern === "multi-region" ||
-        regionCount === "2" ||
-        regionCount === "2-active" ||
-        regionCount === "3plus";
-
-      const tightRto = rto === "mins" || rto === "hour";
-      const tightRpo = rpo === "zero" || rpo === "15min";
-
-      // Baseline / sensitivity
-      const baselineLabel =
-        securityBaseline === "minimal"
-          ? "minimal"
-          : securityBaseline === "standard"
-          ? "standard enterprise"
-          : securityBaseline === "regulated"
-          ? "strict regulated"
-          : securityBaseline === "stig"
-          ? "DoD/STIG-aligned"
-          : securityBaseline || "unspecified";
-
-      if (regulated || isPublicSector) {
-        if (securityBaseline === "minimal") {
-          items.push("⚠️ Update security baseline from minimal to CIS/STIG or an equivalent regulated control set for this data.");
-        } else {
-          items.push("✅ Security baseline set to " + baselineLabel + " for regulated / public-sector data.");
-        }
-      } else if (securityBaseline && securityBaseline !== "minimal") {
-        items.push("✅ Security baseline set to " + baselineLabel + " for this workload.");
-      }
-
-      // SecOps maturity
-      if (secOpsMaturity === "basic") {
-        items.push("⚠️ Logging & SecOps are basic – centralize cloud and F5 logs, define alert routing, and create at least minimal runbooks.");
-      } else if (secOpsMaturity === "central-siem") {
-        items.push("✅ Central SIEM/SOC in place – ensure this workload and F5 telemetry are onboarded with clear owners for critical alerts.");
-      } else if (secOpsMaturity === "mature-devsecops") {
-        items.push("✅ Mature DevSecOps – keep SAST/DAST, IaC scanning, and policy-as-code in the pipeline for this workload.");
-      }
-
-      // Perimeter and F5
-      if (perimeterPattern === "cloud-plus-f5") {
-        items.push("✅ Perimeter: cloud-native firewalls plus F5 WAAP/API security at the edge for critical internet-facing endpoints.");
-      } else if (perimeterPattern === "f5-centric") {
-        items.push("✅ Perimeter: F5 as the primary WAAP/perimeter tier, with cloud-native network controls as a second layer.");
-      } else {
-        items.push("⚠️ Confirm perimeter: rely on cloud-native firewalls/WAF and consider F5 for Tier 0/1 and regulated public endpoints.");
-      }
-
-      if (Array.isArray(f5Usage) && f5Usage.length) {
-        items.push("✅ F5 usage focus identified (" + f5Usage.join(", ") + ") – align policies, logging, and runbooks to these entry points.");
-      }
-
-      // Data protection
-      if (dataProtection === "field-level") {
-        items.push("✅ Data protection: field-level protection / tokenization for sensitive fields with isolated key management.");
-      } else if (dataProtection === "in-transit-and-at-rest") {
-        items.push("✅ Data protection: encryption in transit and at rest enabled for all core services.");
-      } else if (dataProtection === "at-rest") {
-        items.push("⚠️ Extend protection: ensure TLS for internal APIs, messaging, and F5 front doors – not just at-rest encryption.");
-      }
-
-      // DR & criticality
-      if (multiRegion && tightRto && tightRpo) {
-        items.push("✅ DR: active–active multi-region with aggressive RTO/RPO – verify game days and failover automation.");
-      } else if (multiRegion && (tightRto || tightRpo)) {
-        items.push("✅ DR: warm standby or active–passive multi-region – verify promotion and DNS/traffic failover steps.");
-      } else if (!multiRegion && (criticality === "tier0" || criticality === "tier1")) {
-        items.push("⚠️ DR: Tier 0/1 in a single region – consider adding a DR region or clearly documenting accepted single-region risk.");
-      } else {
-        items.push("✅ DR: backup-and-restore–centric pattern is acceptable for this criticality and RTO/RPO band.");
-      }
-
-      if (!items.length) {
-        return "Controls and DR posture look consistent with the selected criticality, data sensitivity, and SecOps maturity.";
-      }
-
-      const html = items.map(i => "<li>" + i + "</li>").join("");
-      return "<ul>" + html + "</ul>";
-    }
-
-
     }
 
 
@@ -2361,7 +1945,6 @@ ${docBody}
       const howTo = buildHowToPlaybook(currentCloud, state);
       const sizing = buildSizingPlan(currentCloud, state);
       const assumptions = buildAssumptionsAndGaps(state, currentCloud);
-      const controlsChecklist = buildCyberChecklist(state, currentCloud);
 
       const resultsContent = document.getElementById("resultsContent");
       if (resultsContent) resultsContent.style.display = "block";
@@ -2384,7 +1967,6 @@ ${docBody}
         ["opsNotes", rec.opsNotes],
         ["securityMain", rec.securityMain],
         ["securityNotes", rec.securityNotes],
-        ["controlsMain", controlsChecklist],
         ["migrationMain", rec.migrationMain],
         ["migrationNotes", rec.migrationNotes],
         ["sizingMain", sizing.main],
@@ -3655,22 +3237,12 @@ document.addEventListener("DOMContentLoaded", function () {
       const printBtn = document.getElementById("printBtn");
       const wordBtn = document.getElementById("exportWordBtn");
 
-      const scenarioSaveBtn = document.getElementById("scenarioSaveBtn");
-      const scenarioLoadBtn = document.getElementById("scenarioLoadBtn");
-      const scenarioDeleteBtn = document.getElementById("scenarioDeleteBtn");
-      const scenarioSelect = document.getElementById("scenarioSelect");
-
       if (backBtn) backBtn.addEventListener("click", goBack);
       if (nextBtn) nextBtn.addEventListener("click", goNext);
       if (generateBtn) generateBtn.addEventListener("click", generateRecommendation);
       if (fullBtn) fullBtn.addEventListener("click", openFullViewWindow);
       if (printBtn) printBtn.addEventListener("click", openPrintView);
       if (wordBtn) wordBtn.addEventListener("click", exportRecommendationAsWord);
-
-      if (scenarioSelect) refreshScenarioDropdown();
-      if (scenarioSaveBtn) scenarioSaveBtn.addEventListener("click", onScenarioSaveClicked);
-      if (scenarioLoadBtn) scenarioLoadBtn.addEventListener("click", onScenarioLoadClicked);
-      if (scenarioDeleteBtn) scenarioDeleteBtn.addEventListener("click", onScenarioDeleteClicked);
     });
   </script>
 </body>
