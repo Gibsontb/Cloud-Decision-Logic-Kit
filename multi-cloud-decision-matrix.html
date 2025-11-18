@@ -480,7 +480,7 @@
         </p>
       </div>
       <div class="cloud-picker">
-        <div class="badge">Version 6.0a · Copright Theodore B.C. Gibson</div>
+        <div class="badge">Version 6.1a · Copright Theodore B.C. Gibson</div>
         <label>
           Cloud:
           <select id="cloudProvider">
@@ -973,6 +973,51 @@
             </div>
 
             <div class="field">
+              <label for="identityModel">
+                Identity &amp; access model
+              </label>
+              <select id="identityModel">
+                <option value="">Select...</option>
+                <option value="cloud-iam-only">Cloud-native IAM only</option>
+                <option value="hybrid-ad-entra">Hybrid AD / Entra / on-prem IdP</option>
+                <option value="external-idp-plus-iam">External IdP (Okta / Ping etc.) + cloud IAM</option>
+              </select>
+              <div class="hint">
+                Used to steer identity, SSO, and least-privilege access guidance.
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="secretsModel">
+                Secrets &amp; keys
+              </label>
+              <select id="secretsModel">
+                <option value="">Select...</option>
+                <option value="basic">Basic secrets in config / parameter store</option>
+                <option value="secrets-manager">Cloud-native secrets manager</option>
+                <option value="hsm-backed">HSM-backed keys / dedicated KMS</option>
+              </select>
+              <div class="hint">
+                Covers where app secrets and keys live and how strongly they are protected.
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="dataProtection">
+                Data protection level
+              </label>
+              <select id="dataProtection">
+                <option value="">Select...</option>
+                <option value="at-rest">At-rest encryption only</option>
+                <option value="in-transit-and-at-rest">In-transit + at-rest (TLS everywhere)</option>
+                <option value="field-level">Field-level / tokenization / anonymization</option>
+              </select>
+              <div class="hint">
+                Helps tune recommendations for TLS, tokenization, anonymization, and privacy controls.
+              </div>
+            </div>
+
+            <div class="field">
               <label for="perimeterPattern">
                 Perimeter &amp; firewall pattern
               </label>
@@ -985,6 +1030,41 @@
               </select>
               <div class="hint">
                 Helps shape guidance across cloud-native firewalls, WAF, and F5 services.
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="f5Usage">
+                F5 usage focus
+              </label>
+              <div class="multi-checkbox-group" id="f5UsageGroup">
+                <label class="checkbox-inline">
+                  <input type="checkbox" name="f5Usage" value="waap-web" />
+                  WAAP / WAF for web apps
+                </label>
+                <label class="checkbox-inline">
+                  <input type="checkbox" name="f5Usage" value="api-security" />
+                  API security / API gateway
+                </label>
+                <label class="checkbox-inline">
+                  <input type="checkbox" name="f5Usage" value="ddos" />
+                  DDoS protection
+                </label>
+                <label class="checkbox-inline">
+                  <input type="checkbox" name="f5Usage" value="gslb" />
+                  GSLB / global traffic management
+                </label>
+                <label class="checkbox-inline">
+                  <input type="checkbox" name="f5Usage" value="service-mesh" />
+                  Service mesh / east-west L7
+                </label>
+                <label class="checkbox-inline">
+                  <input type="checkbox" name="f5Usage" value="remote-access" />
+                  Remote access / ZTNA / VPN replacement
+                </label>
+              </div>
+              <div class="hint">
+                Choose how you expect to use F5 capabilities for this workload (edge WAAP, API security, DDoS, etc.).
               </div>
             </div>
 
@@ -1194,6 +1274,11 @@
 
             
             <div class="result-section">
+              <h3>Assumptions &amp; gaps</h3>
+              <div class="result-main" id="assumptionsMain"></div>
+            </div>
+
+            <div class="result-section">
               <h3>Sizing & environment footprint</h3>
               <div class="result-main" id="sizingMain"></div>
               <div class="result-notes" id="sizingNotes"></div>
@@ -1241,6 +1326,12 @@
       return Array.from(select.options)
         .filter(o => o.selected)
         .map(o => o.value);
+    }
+
+
+    function getCheckedValues(name) {
+      const nodes = document.querySelectorAll('input[name="' + name + '"]:checked');
+      return Array.from(nodes).map(n => n.value);
     }
 
     function onCloudChange() {
@@ -1540,6 +1631,29 @@ function goBack() {
       const now = new Date();
       const generatedAt = now.toLocaleString();
 
+      // Pull current wizard state for brief F5 posture line
+      const state = (function () {
+        const envScope = Array.from(
+          document.querySelectorAll('input[name="envScope"]:checked')
+        ).map(c => c.value);
+
+        return {
+          f5Usage: window.getCheckedValues
+            ? window.getCheckedValues("f5Usage")
+            : [],
+          perimeterPattern: document.getElementById("perimeterPattern")
+            ? document.getElementById("perimeterPattern").value
+            : "",
+          criticality: document.getElementById("criticality")
+            ? document.getElementById("criticality").value
+            : "",
+          dataSensitivity: document.getElementById("dataSensitivity")
+            ? document.getElementById("dataSensitivity").value
+            : "",
+          envScope
+        };
+      })();
+
       let pillsLine = "";
       if (summaryPills) {
         const spans = Array.from(summaryPills.querySelectorAll("span"));
@@ -1550,11 +1664,71 @@ function goBack() {
         ? resultsContent.innerHTML
         : "<p>No recommendation has been generated yet.</p>";
 
+      
+      let f5PostureLine = "";
+      if (state) {
+        const usage = Array.isArray(state.f5Usage) ? state.f5Usage : [];
+        const postureBits = [];
+
+        const isRegulated =
+          state.dataSensitivity === "regulated" ||
+          state.dataSensitivity === "ps-l2" ||
+          state.dataSensitivity === "ps-l4" ||
+          state.dataSensitivity === "ps-l5" ||
+          state.dataSensitivity === "ps-l6";
+
+        if (usage.indexOf("waap-web") !== -1 || usage.indexOf("api-security") !== -1) {
+          postureBits.push("F5 front-door protection for web and/or API traffic");
+        }
+        if (usage.indexOf("ddos") !== -1) {
+          postureBits.push("F5 DDoS protection on critical internet-facing endpoints");
+        }
+        if (usage.indexOf("gslb") !== -1) {
+          postureBits.push("F5 DNS / GSLB for cross-region traffic steering");
+        }
+        if (usage.indexOf("service-mesh") !== -1) {
+          postureBits.push("F5 applied to east–west / service-mesh traffic patterns");
+        }
+        if (usage.indexOf("remote-access") !== -1) {
+          postureBits.push("F5 secure remote access / ZTNA as VPN successor");
+        }
+
+        if (!postureBits.length && state.perimeterPattern === "cloud-plus-f5") {
+          postureBits.push("F5 layered with cloud-native firewalls as part of the perimeter");
+        } else if (!postureBits.length && state.perimeterPattern === "f5-centric") {
+          postureBits.push("F5 as the primary perimeter / WAAP tier");
+        }
+
+        if (postureBits.length) {
+          const focus = postureBits.join("; ");
+          const criticalityLabel =
+            state.criticality === "tier0"
+              ? "Tier 0"
+              : state.criticality === "tier1"
+              ? "Tier 1"
+              : state.criticality === "tier2"
+              ? "Tier 2/3"
+              : "mixed criticality";
+
+          const sectorTag = isRegulated ? "regulated / public-sector context" : "commercial context";
+
+          f5PostureLine =
+            "<p><strong>F5 posture:</strong> " +
+            focus +
+            " (" +
+            criticalityLabel +
+            ", " +
+            sectorTag +
+            ").</p>";
+        }
+      }
+
       const docBody = `
         <h1>Cloud Recommendation for ${workloadName}</h1>
         <p><strong>Cloud:</strong> ${providerLabel}</p>
         <p><strong>Generated:</strong> ${generatedAt}</p>
         ${pillsLine ? `<p><strong>Summary:</strong> ${pillsLine}</p>` : ""}
+        ${f5PostureLine || ""}
         ${resultsHtml}
       `;
 
@@ -1622,6 +1796,63 @@ ${docBody}
       URL.revokeObjectURL(url);
     }
 
+    
+    function buildAssumptionsAndGaps(state, cloud) {
+      const {
+        criticality,
+        uptimeTarget,
+        rto,
+        rpo,
+        dataSensitivity,
+        securityBaseline,
+        secOpsMaturity,
+        geoPattern,
+        regionCount
+      } = state;
+
+      const bullets = [];
+
+      // Criticality vs availability
+      if ((criticality === "tier0" || criticality === "tier1") && (!uptimeTarget || uptimeTarget === "99.9")) {
+        bullets.push("High criticality (Tier 0/1) with a relatively weak uptime target – confirm if HA and DR are sufficient.");
+      }
+
+      // DR vs geography
+      const multiRegion =
+        geoPattern === "multi-region" ||
+        regionCount === "2" ||
+        regionCount === "2-active" ||
+        regionCount === "3plus";
+
+      if ((criticality === "tier0" || criticality === "tier1") && !multiRegion) {
+        bullets.push("Tier 0/1 without multi-region or an explicit DR region – confirm that single-region risk is acceptable.");
+      }
+
+      // Regulated vs baseline / SecOps
+      const regulated =
+        dataSensitivity === "regulated" ||
+        dataSensitivity === "ps-l2" ||
+        dataSensitivity === "ps-l4" ||
+        dataSensitivity === "ps-l5" ||
+        dataSensitivity === "ps-l6";
+
+      if (regulated && securityBaseline === "minimal") {
+        bullets.push("Regulated or public-sector data with a minimal security baseline – likely not acceptable; align to CIS/STIG or an equivalent control set.");
+      }
+
+      if (regulated && secOpsMaturity === "basic") {
+        bullets.push("Regulated data with only basic logging – SOC/SIEM coverage, alerting, and runbooks likely need to be strengthened.");
+      }
+
+      if (!bullets.length) {
+        return "Assumptions look consistent with the selected criticality, DR, and security posture. Use this as a starting point for deeper design reviews.";
+      }
+
+      const items = bullets.map(b => "<li>" + b + "</li>").join("");
+      return "<ul>" + items + "</ul>";
+    }
+
+
     function generateRecommendation() {
       const envScope = Array.from(
         document.querySelectorAll('input[name="envScope"]:checked')
@@ -1659,7 +1890,11 @@ ${docBody}
         timeToMarket: document.getElementById("timeToMarket").value,
         opsMaturity: document.getElementById("opsMaturity").value,
         securityBaseline: document.getElementById("securityBaseline").value,
+        identityModel: document.getElementById("identityModel").value,
+        secretsModel: document.getElementById("secretsModel").value,
+        dataProtection: document.getElementById("dataProtection").value,
         perimeterPattern: document.getElementById("perimeterPattern").value,
+        f5Usage: getCheckedValues("f5Usage"),
         secOpsMaturity: document.getElementById("secOpsMaturity").value,
 
         sourceEnv: document.getElementById("sourceEnv").value,
@@ -1691,6 +1926,7 @@ ${docBody}
       const rec = generateCloudRecommendation(currentCloud, state);
       const howTo = buildHowToPlaybook(currentCloud, state);
       const sizing = buildSizingPlan(currentCloud, state);
+      const assumptions = buildAssumptionsAndGaps(state, currentCloud);
 
       const resultsContent = document.getElementById("resultsContent");
       if (resultsContent) resultsContent.style.display = "block";
@@ -1718,7 +1954,8 @@ ${docBody}
         ["sizingMain", sizing.main],
         ["sizingNotes", sizing.notes],
         ["sizingMatrix", sizing.matrixHtml],
-        ["howToMain", howTo]
+        ["howToMain", howTo],
+        ["assumptionsMain", assumptions]
       ];
 
       mapping.forEach(([id, html]) => {
@@ -1752,7 +1989,11 @@ function generateCloudRecommendation(cloud, state) {
         timeToMarket,
         opsMaturity,
         securityBaseline,
+        identityModel,
+        secretsModel,
+        dataProtection,
         perimeterPattern,
+        f5Usage,
         secOpsMaturity,
         sourceEnv,
         migrationApproach,
@@ -1806,8 +2047,9 @@ function generateCloudRecommendation(cloud, state) {
       let opsNotes = "";
       let migrationMain = providerName + " migration & onboarding focus.";
       let migrationNotes = "Use native migration tooling and IaC-driven landing zones.";
-      let securityMain = "Baseline security and network controls.";
+      let securityMain = "Security and network posture aligned to this workload.";
       let securityNotes = "";
+      let drPatternLabel = "";
 
       /* ===================== AZURE ===================== */
       if (cloud === "azure") {
@@ -2425,42 +2667,106 @@ function generateCloudRecommendation(cloud, state) {
       }
 
       
-      // Security & network controls
+      // Security & network controls (deck-ready wording)
       const baselineLabel =
         securityBaseline === "stig"
-          ? "DoD/STIG-aligned"
+          ? "DoD/STIG-aligned hardening"
           : securityBaseline === "regulated"
-          ? "strict regulated (PCI/PHI/SOX-like)"
+          ? "strict regulated baseline (PCI/PHI/SOX-like)"
           : securityBaseline === "standard"
-          ? "standard enterprise (CIS / internal baseline)"
+          ? "standard enterprise baseline (CIS / internal security baseline)"
           : securityBaseline === "minimal"
-          ? "minimal baseline"
-          : "";
+          ? "minimal baseline (best-effort hardening only)"
+          : null;
 
       const perimeterHint =
         perimeterPattern === "cloud-plus-f5"
-          ? "Use cloud-native firewalling for north-south and east-west segmentation, and layer <strong>F5 services</strong> at the edge for advanced L7/WAF/WAAP and API protection."
+          ? "Use cloud-native firewalls for north–south and east–west segmentation, and layer <strong>F5 services</strong> at the edge for advanced WAAP, bot, and API protection."
           : perimeterPattern === "f5-centric"
-          ? "Treat <strong>F5 (BIG-IP / NGINX / Distributed Cloud)</strong> as the primary perimeter and WAAP layer, complemented by cloud-native firewalls and network security groups for segmentation."
+          ? "Position <strong>F5 (BIG-IP / NGINX / Distributed Cloud)</strong> as the primary perimeter and WAAP tier, complemented by cloud-native network security groups and firewalls."
           : perimeterPattern === "legacy-fw"
-          ? "Retain the existing on-prem firewall in the short term, but plan to migrate toward cloud-native firewalls and/or F5 services to remove hairpin/backhaul constraints."
-          : "Emphasize cloud-native firewalls, WAF, and private endpoints as the default perimeter and segmentation controls.";
+          ? "Retain the existing on-prem firewall in the near term, but plan to move toward cloud-native firewalls and/or F5 services to reduce hairpin/backhaul and improve agility."
+          : "Lead with cloud-native firewalls, WAF, and private endpoints as the default perimeter and segmentation controls.";
+
+      const identityHint =
+        identityModel === "cloud-iam-only"
+          ? "Standardize on cloud-native IAM roles and groups, avoid long-lived keys, and minimize local accounts."
+          : identityModel === "hybrid-ad-entra"
+          ? "Treat AD / Entra as a Tier 0 dependency; harden sync paths, use privileged access workstations, and prefer group-based RBAC for cloud resources."
+          : identityModel === "external-idp-plus-iam"
+          ? "Use the external IdP for SSO and workforce auth, and cloud IAM roles for workload access; keep privilege boundaries clear between the two."
+          : null;
+
+      const secretsHint =
+        secretsModel === "basic"
+          ? "Move application secrets out of code/config and into a managed secrets store with rotation policies."
+          : secretsModel === "secrets-manager"
+          ? "Standardize on a cloud-native secrets manager for all app credentials, API keys, and connection strings."
+          : secretsModel === "hsm-backed"
+          ? "Use HSM-backed keys for critical and regulated workloads, with strong separation of duties for key administration."
+          : null;
+
+      const dataProtectionHint =
+        dataProtection === "at-rest"
+          ? "Ensure encryption-at-rest for all managed data services and disks, and document who owns the keys."
+          : dataProtection === "in-transit-and-at-rest"
+          ? "Enforce TLS for all traffic (internal and external), align on modern cipher policies, and ensure encryption-at-rest everywhere."
+          : dataProtection === "field-level"
+          ? "Introduce tokenization, field-level encryption, and/or anonymization for sensitive fields, with isolated key management for those datasets."
+          : null;
 
       securityMain =
         "Apply " +
         (baselineLabel || "an appropriate security baseline") +
-        " with opinionated network segmentation and perimeter controls for this workload tier.";
+        " with opinionated identity, secrets management, network segmentation, and perimeter controls for this workload.";
 
       securityNotes = perimeterHint;
+
+      if (identityHint) {
+        securityNotes += (securityNotes ? " " : "") + identityHint;
+      }
+      if (secretsHint) {
+        securityNotes += (securityNotes ? " " : "") + secretsHint;
+      }
+      if (dataProtectionHint) {
+        securityNotes += (securityNotes ? " " : "") + dataProtectionHint;
+      }
+
+      if (Array.isArray(f5Usage) && f5Usage.length) {
+        const f5Parts = [];
+
+        if (f5Usage.indexOf("waap-web") !== -1) {
+          f5Parts.push("Use F5 WAAP/WAF (BIG-IP Advanced WAF, NGINX App Protect, or Distributed Cloud WAAP) in front of public web and portal endpoints.");
+        }
+        if (f5Usage.indexOf("api-security") !== -1) {
+          f5Parts.push("Standardize on F5 for API gateway and API security for critical APIs – for example Distributed Cloud API Security or an NGINX-based gateway.");
+        }
+        if (f5Usage.indexOf("ddos") !== -1) {
+          f5Parts.push("Use F5 DDoS protections (on-prem BIG-IP or Distributed Cloud DDoS) for internet-facing Tier 0/1 properties.");
+        }
+        if (f5Usage.indexOf("gslb") !== -1) {
+          f5Parts.push("Use F5 DNS / GSLB to steer traffic across regions and improve availability and latency.");
+        }
+        if (f5Usage.indexOf("service-mesh") !== -1) {
+          f5Parts.push("Consider F5 for service-mesh-style L7 control in front of microservices and Kubernetes workloads.");
+        }
+        if (f5Usage.indexOf("remote-access") !== -1) {
+          f5Parts.push("Use F5 for secure remote access / ZTNA as you transition away from legacy VPN patterns.");
+        }
+
+        if (f5Parts.length) {
+          securityNotes += (securityNotes ? " " : "") + f5Parts.join(" ");
+        }
+      }
 
       if (secOpsMaturity === "basic") {
         securityNotes +=
           (securityNotes ? " " : "") +
-          "Turn on platform logs, WAF/F5 telemetry, and send them to at least one central log store; define a minimal alert set and owners.";
+          "Turn on platform logs and WAF/F5 telemetry, ship them to at least one central log store, and define a minimal alert set and owners.";
       } else if (secOpsMaturity === "central-siem") {
         securityNotes +=
           (securityNotes ? " " : "") +
-          "Integrate cloud and F5 telemetry into a central SIEM/SOC with clear runbooks for high-severity alerts.";
+          "Integrate cloud, application, and F5 telemetry into a central SIEM/SOC with clear runbooks for high-severity alerts.";
       } else if (secOpsMaturity === "mature-devsecops") {
         securityNotes +=
           (securityNotes ? " " : "") +
@@ -2476,14 +2782,38 @@ function generateCloudRecommendation(cloud, state) {
       if (isPublicSector) {
         securityNotes +=
           (securityNotes ? " " : "") +
-          "For public sector impact levels (L2/L4/L5/L6), align with the relevant control framework and prefer government/sovereign regions where required.";
+          "For public-sector impact levels (L2/L4/L5/L6), align to the relevant control framework and prefer government/sovereign regions where required.";
       }
 
       if (criticality === "tier0") {
         securityNotes +=
           (securityNotes ? " " : "") +
-          "For Tier 0 workloads, design for zero-trust access, strong MFA, and defense-in-depth at each layer including identity, network, and application.";
+          "For Tier 0 workloads, design for zero-trust access, strong MFA, and defense-in-depth at identity, network, and application layers.";
       }
+
+      // DR pattern label for deck summaries
+      const tightRto = rto === "mins" || rto === "hour";
+      const tightRpo = rpo === "zero" || rpo === "15min";
+      const multiRegion =
+        geoPattern === "multi-region" ||
+        regionCount === "2" ||
+        regionCount === "2-active" ||
+        regionCount === "3plus";
+
+      if (multiRegion && tightRto && tightRpo) {
+        drPatternLabel = "Active–active multi-region with aggressive RTO/RPO.";
+      } else if (multiRegion && (tightRto || tightRpo)) {
+        drPatternLabel = "Warm standby or active–passive multi-region.";
+      } else if (!multiRegion && (criticality === "tier0" || criticality === "tier1")) {
+        drPatternLabel = "Multi-AZ in a single region; consider adding a DR region.";
+      } else {
+        drPatternLabel = "Backup-and-restore–centric DR pattern with relaxed RTO/RPO.";
+      }
+
+      if (drPatternLabel && opsNotes.indexOf("DR pattern:") === -1) {
+        opsNotes += (opsNotes ? " " : "") + "DR pattern: " + drPatternLabel;
+      }
+
 return {
         computeMain,
         computeNotes,
@@ -2531,11 +2861,11 @@ return {
 
       const sectorLabel =
         isPublicSector
-          ? "public sector / IL workload"
+          ? "public sector / impact-level workload"
           : dataSensitivity === "regulated"
-          ? "regulated private sector (financial/PHI) workload"
+          ? "regulated private-sector (financial/PHI) workload"
           : isPrivateSectorLabel
-          ? "commercial private sector workload"
+          ? "commercial private-sector workload"
           : "general commercial workload";
 
       const cloudLabel =
