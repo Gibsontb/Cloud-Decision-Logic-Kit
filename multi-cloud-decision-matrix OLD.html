@@ -500,7 +500,7 @@
         </p>
       </div>
       <div class="cloud-picker">
-        <div class="badge">Version 6.4a · Copright Theodore B.C. Gibson · Copright Theodore B.C. Gibson · Copright Theodore B.C. Gibson</div>
+        <div class="badge">Version 6.5a · Copright Theodore B.C. Gibson · Copright Theodore B.C. Gibson · Copright Theodore B.C. Gibson</div>
         <label>
           Cloud:
           <select id="cloudProvider">
@@ -836,52 +836,6 @@
             </div>
 
             <div class="field">
-              <label for="sourceEnv">
-                Source environment (today)
-              </label>
-              <select id="sourceEnv">
-                <option value="">Select...</option>
-                <option value="onprem-vmware">On-prem VMware estate</option>
-                <option value="onprem-baremetal">On-prem bare metal / mixed hypervisors</option>
-                <option value="existing-dc">Hosted / co-lo data center</option>
-                <option value="existing-cloud">Existing cloud (re-platform / multi-cloud)</option>
-                <option value="saas">Primarily SaaS integrations</option>
-                <option value="hybrid">Hybrid mix of on-prem + cloud</option>
-              </select>
-              <div class="hint">Used to drive VMware options, migration tooling, and network connectivity.</div>
-            </div><div class="field">
-              <label for="migrationApproach">
-                Migration approach (7R)
-              </label>
-              <select id="migrationApproach">
-                <option value="">Select...</option>
-                <option value="rehost">Rehost (lift & shift)</option>
-                <option value="replatform">Replatform (minor cloud optimizations)</option>
-                <option value="refactor">Refactor / modernize</option>
-                <option value="repurchase">Repurchase (SaaS)</option>
-                <option value="retain">Retain (stay where it is)</option>
-                <option value="retire">Retire (decommission)</option>
-                <option value="relocate">Relocate (VMware-as-a-Service)</option>
-              </select>
-            </div><div class="field">
-              <label for="iaCTools">
-                IaC / automation tooling
-              </label>
-              <select id="iaCTools">
-                <option value="">Select...</option>
-                <option value="terraform">Terraform</option>
-                <option value="ansible">Ansible</option>
-                <option value="cloud-native">
-                  Cloud-native (ARM/Bicep, CloudFormation/CDK, Deployment Manager, OCI Resource Manager)
-                </option>
-                <option value="jenkins-ado-gha">
-                  CI/CD (Jenkins / Azure DevOps / GitHub Actions / CodePipeline / Cloud Build)
-                </option>
-              </select>
-              <div class="hint">
-                Pick the primary IaC / automation tool; if you use several, pick the most important one.
-              </div>
-            </div><div class="field">
               <label for="complianceNotes">
                 Compliance / regulatory notes
               </label>
@@ -970,11 +924,57 @@
               </select>
             </div>
 
-            
+            <div class="field">
+              <label for="sourceEnv">
+                Source environment (today)
+              </label>
+              <select id="sourceEnv">
+                <option value="">Select...</option>
+                <option value="onprem-vmware">On-prem VMware estate</option>
+                <option value="onprem-baremetal">On-prem bare metal / mixed hypervisors</option>
+                <option value="existing-dc">Hosted / co-lo data center</option>
+                <option value="existing-cloud">Existing cloud (re-platform / multi-cloud)</option>
+                <option value="saas">Primarily SaaS integrations</option>
+                <option value="hybrid">Hybrid mix of on-prem + cloud</option>
+              </select>
+              <div class="hint">Used to drive VMware options, migration tooling, and network connectivity.</div>
+            </div>
 
-            
+            <div class="field">
+              <label for="migrationApproach">
+                Migration approach (7R)
+              </label>
+              <select id="migrationApproach">
+                <option value="">Select...</option>
+                <option value="rehost">Rehost (lift & shift)</option>
+                <option value="replatform">Replatform (minor cloud optimizations)</option>
+                <option value="refactor">Refactor / modernize</option>
+                <option value="repurchase">Repurchase (SaaS)</option>
+                <option value="retain">Retain (stay where it is)</option>
+                <option value="retire">Retire (decommission)</option>
+                <option value="relocate">Relocate (VMware-as-a-Service)</option>
+              </select>
+            </div>
 
-            
+            <div class="field">
+              <label for="iaCTools">
+                IaC / automation tooling
+              </label>
+              <select id="iaCTools">
+                <option value="">Select...</option>
+                <option value="terraform">Terraform</option>
+                <option value="ansible">Ansible</option>
+                <option value="cloud-native">
+                  Cloud-native (ARM/Bicep, CloudFormation/CDK, Deployment Manager, OCI Resource Manager)
+                </option>
+                <option value="jenkins-ado-gha">
+                  CI/CD (Jenkins / Azure DevOps / GitHub Actions / CodePipeline / Cloud Build)
+                </option>
+              </select>
+              <div class="hint">
+                Pick the primary IaC / automation tool; if you use several, pick the most important one.
+              </div>
+            </div>
 
             <div class="field">
               <label for="securityBaseline">
