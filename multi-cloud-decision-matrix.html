@@ -466,20 +466,22 @@
       margin-bottom: 4px;
     }
   
-    /* F5 usage checkbox alignment */
     .multi-checkbox-group {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 0.25rem;
+      gap: 4px;
+      margin-top: 2px;
     }
+
     .multi-checkbox-group .checkbox-inline {
       display: flex;
       align-items: center;
-      justify-content: flex-start;
-      gap: 0.4rem;
-      margin: 0;
+      gap: 6px;
+      font-size: 0.82rem;
+      white-space: nowrap;
     }
+
     .multi-checkbox-group .checkbox-inline input[type="checkbox"] {
       margin: 0;
     }
@@ -498,7 +500,7 @@
         </p>
       </div>
       <div class="cloud-picker">
-        <div class="badge">Version 6.2a · Copright Theodore B.C. Gibson</div>
+        <div class="badge">Version 6.5a · Copright Theodore B.C. Gibson · Copright Theodore B.C. Gibson · Copright Theodore B.C. Gibson</div>
         <label>
           Cloud:
           <select id="cloudProvider">
@@ -1285,12 +1287,21 @@
             </div>
 
             <div class="result-section">
+              <h3>Controls &amp; cyber checklist</h3>
+              <div class="result-main" id="controlsMain"></div>
+            </div>
+
+            <div class="result-section">
               <h3>Migration & onboarding focus</h3>
               <div class="result-main" id="migrationMain"></div>
               <div class="result-notes" id="migrationNotes"></div>
             </div>
 
-            
+            <div class="result-section">
+              <h3>DR pattern by cloud</h3>
+              <div class="result-main" id="drPatternMain"></div>
+            </div>
+
             <div class="result-section">
               <h3>Assumptions &amp; gaps</h3>
               <div class="result-main" id="assumptionsMain"></div>
@@ -1945,6 +1956,8 @@ ${docBody}
       const howTo = buildHowToPlaybook(currentCloud, state);
       const sizing = buildSizingPlan(currentCloud, state);
       const assumptions = buildAssumptionsAndGaps(state, currentCloud);
+      const drPattern = buildDrPatternCard(state, currentCloud);
+      const controlsChecklist = buildCyberChecklist(state, currentCloud);
 
       const resultsContent = document.getElementById("resultsContent");
       if (resultsContent) resultsContent.style.display = "block";
@@ -1967,8 +1980,10 @@ ${docBody}
         ["opsNotes", rec.opsNotes],
         ["securityMain", rec.securityMain],
         ["securityNotes", rec.securityNotes],
+        ["controlsMain", controlsChecklist],
         ["migrationMain", rec.migrationMain],
         ["migrationNotes", rec.migrationNotes],
+        ["drPatternMain", drPattern],
         ["sizingMain", sizing.main],
         ["sizingNotes", sizing.notes],
         ["sizingMatrix", sizing.matrixHtml],
@@ -1980,6 +1995,231 @@ ${docBody}
         const el = document.getElementById(id);
         if (el) el.innerHTML = html || "";
       });
+    }
+
+
+    
+    function buildCyberChecklist(state, cloud) {
+      const {
+        criticality,
+        dataSensitivity,
+        securityBaseline,
+        secOpsMaturity,
+        geoPattern,
+        regionCount,
+        rto,
+        rpo,
+        dataProtection,
+        perimeterPattern,
+        f5Usage,
+        iaCTools,
+        ciCdTools
+      } = state;
+
+      const items = [];
+
+      const regulated =
+        dataSensitivity === "regulated" ||
+        dataSensitivity === "ps-l2" ||
+        dataSensitivity === "ps-l4" ||
+        dataSensitivity === "ps-l5" ||
+        dataSensitivity === "ps-l6";
+
+      const isPublicSector =
+        dataSensitivity === "ps-l2" ||
+        dataSensitivity === "ps-l4" ||
+        dataSensitivity === "ps-l5" ||
+        dataSensitivity === "ps-l6";
+
+      const multiRegion =
+        geoPattern === "multi-region" ||
+        regionCount === "2" ||
+        regionCount === "2-active" ||
+        regionCount === "3plus";
+
+      const tightRto = rto === "mins" || rto === "hour";
+      const tightRpo = rpo === "zero" || rpo === "15min";
+
+      const baselineLabel =
+        securityBaseline === "minimal"
+          ? "minimal"
+          : securityBaseline === "standard"
+          ? "standard enterprise"
+          : securityBaseline === "regulated"
+          ? "regulated / high-sensitivity"
+          : securityBaseline === "stig"
+          ? "DoD/STIG-aligned"
+          : securityBaseline || "unspecified";
+
+      if (regulated || isPublicSector) {
+        if (securityBaseline === "minimal") {
+          items.push(
+            "⚠️ Update the security baseline from minimal to CIS/STIG or an equivalent regulated control set for this data."
+          );
+        } else {
+          items.push(
+            "✅ Security baseline set to " +
+              baselineLabel +
+              " for regulated / public-sector data."
+          );
+        }
+      } else if (securityBaseline && securityBaseline !== "minimal") {
+        items.push(
+          "✅ Security baseline set to " + baselineLabel + " for this workload."
+        );
+      }
+
+      if (secOpsMaturity === "basic") {
+        items.push(
+          "⚠️ Logging & SecOps are basic – centralize cloud and F5 logs, define alert routing, and create at least minimal runbooks."
+        );
+      } else if (secOpsMaturity === "central-siem") {
+        items.push(
+          "✅ Central SIEM/SOC in place – ensure this workload and F5 telemetry are onboarded with clear owners for critical alerts."
+        );
+      } else if (secOpsMaturity === "mature-devsecops") {
+        items.push(
+          "✅ Mature DevSecOps – keep SAST/DAST, IaC scanning, and policy-as-code in the CI/CD pipeline for this workload."
+        );
+      }
+
+      if (perimeterPattern === "cloud-plus-f5") {
+        items.push(
+          "✅ Perimeter: cloud-native firewalls plus F5 WAAP/API security at the edge for critical internet-facing endpoints."
+        );
+      } else if (perimeterPattern === "f5-centric") {
+        items.push(
+          "✅ Perimeter: F5 as the primary WAAP/perimeter tier, with cloud-native network controls as a second layer."
+        );
+      } else {
+        items.push(
+          "⚠️ Confirm perimeter: rely on cloud-native firewalls/WAF and consider F5 for Tier 0/1 and regulated public endpoints."
+        );
+      }
+
+      if (Array.isArray(f5Usage) && f5Usage.length) {
+        items.push(
+          "✅ F5 usage focus identified (" +
+            f5Usage.join(", ") +
+            ") – align policies, logging, and runbooks to these entry points."
+        );
+      }
+
+      if (dataProtection === "field-level") {
+        items.push(
+          "✅ Data protection: field-level protection / tokenization for sensitive fields with isolated key management."
+        );
+      } else if (dataProtection === "in-transit-and-at-rest") {
+        items.push(
+          "✅ Data protection: encryption in transit and at rest enabled for all core services."
+        );
+      } else if (dataProtection === "at-rest") {
+        items.push(
+          "⚠️ Extend protection: ensure TLS for internal APIs, messaging, and F5 front doors – not just at-rest encryption."
+        );
+      }
+
+      if (multiRegion && tightRto && tightRpo) {
+        items.push(
+          "✅ DR: active–active multi-region with aggressive RTO/RPO – verify game days and failover automation."
+        );
+      } else if (multiRegion && (tightRto || tightRpo)) {
+        items.push(
+          "✅ DR: warm standby or active–passive multi-region – verify promotion and DNS/traffic failover steps."
+        );
+      } else if (!multiRegion && (criticality === "tier0" || criticality === "tier1")) {
+        items.push(
+          "⚠️ DR: Tier 0/1 in a single region – either accept single-region risk explicitly or add a DR region."
+        );
+      } else {
+        items.push(
+          "✅ DR: backup-and-restore–centric pattern is acceptable for this criticality and RTO/RPO band."
+        );
+      }
+
+      if ((iaCTools && iaCTools.length) || (ciCdTools && ciCdTools.length)) {
+        items.push(
+          "✅ IaC/CI-CD: capture guardrails as code – enforce security baselines, tagging, and perimeter rules through pipelines."
+        );
+      } else {
+        items.push(
+          "⚠️ IaC/CI-CD: consider managing landing zone controls and guardrails via infrastructure-as-code and CI/CD pipelines."
+        );
+      }
+
+      if (!items.length) {
+        return "Controls and DR posture look broadly consistent with the selected criticality, data sensitivity, and SecOps maturity.";
+      }
+
+      const html = items.map(function (i) { return "<li>" + i + "</li>"; }).join("");
+      return "<ul>" + html + "</ul>";
+    }
+
+function buildDrPatternCard(state, cloud) {
+      const {
+        geoPattern,
+        regionCount,
+        rto,
+        rpo,
+        criticality,
+        sourceEnv,
+        migrationApproach,
+        iaCTools
+      } = state;
+
+      const lines = [];
+
+      const multiRegion =
+        geoPattern === "multi-region" ||
+        regionCount === "2" ||
+        regionCount === "2-active" ||
+        regionCount === "3plus";
+
+      const tightRto = rto === "mins" || rto === "hour";
+      const tightRpo = rpo === "zero" || rpo === "15min";
+
+      let patternLabel = "Backup & restore";
+      if (multiRegion && tightRto && tightRpo) {
+        patternLabel = "Active-active multi-region";
+      } else if (multiRegion && (tightRto || tightRpo)) {
+        patternLabel = "Warm standby / active-passive";
+      } else if (!multiRegion && (criticality === "tier0" || criticality === "tier1")) {
+        patternLabel = "Single-region Tier 0/1 (risk accepted)";
+      }
+
+      const base =
+        "Recommended DR pattern: " +
+        patternLabel +
+        " based on your RTO/RPO targets and regional footprint.";
+
+      lines.push(base);
+
+      const key = (cloud || "").toLowerCase();
+      if (key === "aws") {
+        lines.push(
+          "AWS: use a primary + secondary region with Route 53, multi-AZ data stores, cross-region replication, and runbooks for promotion/failback."
+        );
+      } else if (key === "azure") {
+        lines.push(
+          "Azure: pair regions with Front Door/Traffic Manager, zone-redundant data, Geo-replication, and documented failover workflows."
+        );
+      } else if (key === "gcp") {
+        lines.push(
+          "GCP: use multi-region or paired regional setup with global load balancing, regional SLOs, and tested failover playbooks."
+        );
+      }
+
+      if (sourceEnv || migrationApproach || (iaCTools && iaCTools.length)) {
+        lines.push(
+          "Bake DR changes into your CI/CD pipeline and infrastructure-as-code templates so that failover paths, health checks, and runbooks stay in sync with production."
+        );
+      } else {
+        lines.push(
+          "Capture DR patterns as code (IaC) and include DR checks in your CI/CD pipelines so deployments and failover plans stay aligned."
+        );
+      }
+
+      return "<p>" + lines.join(" ") + "</p>";
     }
 
 function generateCloudRecommendation(cloud, state) {
